@@ -1,0 +1,17 @@
+# Build context hygiene. Anything architecture-specific or regenerated in the
+# image must stay out, or an x86-64 checkout would poison an ARM64 build.
+.git
+.gitignore
+.venv
+.upscaler
+.pytest_cache
+.ruff_cache
+**/__pycache__
+**/*.pyc
+frontend/node_modules
+frontend/dist
+models/*.pth
+models/*.bin
+docker-compose*.yml
+Dockerfile
+.dockerignore

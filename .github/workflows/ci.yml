@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      extended:
+        description: Run heavyweight container and optional-runtime smoke tests
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.5"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: py${{ matrix.python-version }}
+
+      - name: Run backend CI
+        run: make ci-local GATES=backend
+
+  frontend:
+    name: Frontend (Node.js 22)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3 # v6.0.10
+        with:
+          version: "10.34.5"
+          cache: true
+          cache_dependency_path: frontend/pnpm-lock.yaml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Run frontend CI
+        run: make ci-local GATES=frontend
+
+  container-release:
+    name: CPU release container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate CPU, CUDA, and ComfyUI Compose configurations
+        run: make compose-config
+
+      - name: Build the default release image
+        run: docker build --tag local-image-upscaler:cpu .
+
+      - name: Inspect and exercise the complete image
+        run: scripts/container-smoke.sh local-image-upscaler:cpu
+
+  runtime-smoke:
+    name: Optional NCNN runtime smoke
+    if: github.event_name == 'schedule' || inputs.extended == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.5"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: runtime-smoke
+
+      - name: Install software Vulkan and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends mesa-vulkan-drivers
+          uv sync --extra dev --locked
+
+      - name: Install checksum-pinned NCNN runtime
+        run: make setup-model
+
+      - name: Run real inference smoke test
+        run: |
+          uv run python -c 'from upscaler.models.realesrgan_ncnn import RealEsrganNcnnAdapter; assert RealEsrganNcnnAdapter().available'
+          uv run pytest backend/tests/test_realesrgan_integration.py -rs
+
+  cuda-container-build:
+    name: CUDA release image build
+    if: github.event_name == 'schedule' || inputs.extended == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build the locked CUDA image without gated weights
+        run: >-
+          docker build
+          --build-arg RUNTIME_IMAGE=nvidia/cuda:13.0.1-runtime-ubuntu24.04@sha256:c3fde347d52d578c84fd644bc177bc7ec333feaf11550d990da4084d7612e4c7
+          --build-arg UPSCALER_EXTRAS=swinir
+          --tag local-image-upscaler:cuda-ci
+          .
+
+      - name: Verify the CUDA runtime and neural packages are present
+        run: |
+          docker run --rm --entrypoint python3 local-image-upscaler:cuda-ci \
+            -c 'import cv2, spandrel, torch, torchvision; assert torch.version.cuda'
+          test "$(docker image inspect --format '{{.Config.User}}' local-image-upscaler:cuda-ci)" = "10001:10001"

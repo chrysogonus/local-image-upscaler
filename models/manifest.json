@@ -1,0 +1,72 @@
+{
+  "schema_version": 3,
+  "runtimes": [
+    {
+      "id": "realesrgan-ncnn-vulkan-linux-x64",
+      "name": "Real-ESRGAN NCNN/Vulkan",
+      "version": "20220424",
+      "release": "v0.2.5.0",
+      "platform": "linux-x86_64",
+      "license": "MIT",
+      "homepage": "https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan",
+      "archive_url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip",
+      "sha256": "e5aa6eb131234b87c0c51f82b89390f5e3e642b7b70f2b9bbe95b6a285a40c96",
+      "bundled_models": [
+        "realesrgan-x4plus",
+        "realesrgan-x4plus-anime",
+        "realesr-animevideov3"
+      ],
+      "notes": "Official portable release, installed by scripts/install-realesrgan-linux.sh, which reads the archive_url and sha256 from this entry. Files are downloaded into .upscaler and are not committed."
+    }
+  ],
+  "weights": [
+    {
+      "id": "realesrgan-x4plus",
+      "group": "realesrgan",
+      "name": "RealESRGAN_x4plus",
+      "filename": "RealESRGAN_x4plus.pth",
+      "release": "v0.1.0",
+      "architecture": "RRDBNet",
+      "scale": 4,
+      "num_block": 23,
+      "platform": "any",
+      "license": "BSD-3-Clause",
+      "homepage": "https://github.com/xinntao/Real-ESRGAN",
+      "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
+      "sha256": "4fa0d38905f75ac06eb49a7951b426670021be3018265fd191d2125df9d682f1",
+      "notes": "The only weight the CUDA engine loads. General-purpose photo restoration; that engine deliberately offers no model choice, so no illustration variant is installed into it. Upstream publishes no digest; sha256 was computed from the official release download and pinned here."
+    },
+    {
+      "id": "realesrgan-x4plus-anime-6b",
+      "group": "comfyui-illustration",
+      "name": "RealESRGAN x4plus anime 6B",
+      "filename": "RealESRGAN_x4plus_anime_6B.pth",
+      "release": "v0.2.2.4",
+      "architecture": "RRDBNet",
+      "scale": 4,
+      "num_block": 6,
+      "platform": "any",
+      "license": "BSD-3-Clause",
+      "homepage": "https://github.com/xinntao/Real-ESRGAN/blob/master/docs/anime_model.md",
+      "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth",
+      "sha256": "f872d837d3c90ed2e05227bed711af5671a6fd1c9f7d7e91c911a61f155e99da",
+      "notes": "Official x4 model optimized for anime illustrations. Installed into the user's ComfyUI upscale_models directory; the app uses it only in the explicit Illustration mode. Upstream publishes no digest; sha256 was computed from the official release asset and pinned here."
+    },
+    {
+      "id": "swinir-l-realsr-gan",
+      "group": "swinir",
+      "name": "SwinIR-L real-world x4 GAN",
+      "filename": "003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth",
+      "release": "v0.0",
+      "architecture": "SwinIR",
+      "scale": 4,
+      "platform": "any",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/JingyunLiang/SwinIR",
+      "url": "https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth",
+      "sha256": "99adfa91350a84c99e946c1eb3d8fce34bc28f57d807b09dc8fe40a316328c0a",
+      "notes": "Preferred Upscale engine: a transformer, which is what every NTIRE 2026 x4 winner is built on, and specifically the variant trained with the BSRGAN degradation pipeline. The classical SwinIR/HAT/DRCT checkpoints are trained on bicubic downsampling and sharpen compression artifacts on real photographs, so the benchmark leaders are deliberately not pinned here. Any other spandrel-loadable checkpoint can be substituted via UPSCALER_SR_MODEL. Upstream publishes no digest; sha256 was computed from the official release download and pinned here."
+    }
+  ],
+  "repositories": []
+}

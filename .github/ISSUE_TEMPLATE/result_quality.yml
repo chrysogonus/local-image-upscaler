@@ -1,0 +1,101 @@
+name: Result quality
+description: The job succeeded, but the image it produced is wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        One distinction decides most of these reports. Every mode here reconstructs,
+        and a super-resolution model inferring a texture that turns out to be wrong is
+        working as documented, not a defect. A defect is the app producing something
+        it says it does not — a halo where halos are clamped, a seam where blending
+        should hide it, a colour shift, or a wrong dimension. See
+        [Reconstruction only](../../#reconstruction-only).
+
+
+        The same rule as the bug form applies to attachments: synthetic or
+        public-domain images only, never a real person.
+
+  - type: dropdown
+    id: symptom
+    attributes:
+      label: What is wrong with the output?
+      options:
+        - Halos or ringing along edges
+        - Oversharpened or brittle-looking texture
+        - Visible tile seams or a grid
+        - Oversmoothing, detail wiped out
+        - Colour or exposure shift from the source
+        - Fringing or a halo around transparency
+        - Wrong output dimensions or aspect ratio
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What you see, and what you expected
+      description: >-
+        Say where in the frame it appears and at what zoom you are judging it. A 1:1
+        crop is far more useful than a fit-to-screen screenshot.
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: The source image
+      description: >-
+        Dimensions, format, and how it was degraded if you know — camera, a resize, a
+        JPEG re-save, a screenshot. This decides which engine should have been
+        chosen and what it could recover.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Which mode, and what target?
+      options:
+        - Upscale to 4K
+        - Upscale to 8K
+        - Illustration
+        - Sharpen
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: sharpening
+    attributes:
+      label: Finishing strength
+      description: Off, Natural, Crisp, Strong, or the exact percentage if you moved the slider.
+      placeholder: Natural
+    validations:
+      required: true
+
+  - type: textarea
+    id: result
+    attributes:
+      label: Job result and capabilities
+      description: >-
+        The finished job records the resolved engine, device, precision, tile size,
+        pass chain, and warnings — which is what makes a quality report actionable.
+        Paste it, along with
+        `curl -s http://127.0.0.1:8000/api/v1/capabilities | python3 -m json.tool`
+      render: json
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I inspected the result at 1:1, not only fit-to-screen.
+          required: true
+        - label: I checked that this is not one of the [current limitations](https://github.com/chrysogonus/local-image-upscaler/blob/main/docs/reference.md#current-limitations).
+          required: true
+        - label: Any image I attach is synthetic, public domain, or mine, and does not depict a real person.
+          required: true

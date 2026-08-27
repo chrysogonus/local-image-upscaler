@@ -1,0 +1,117 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "local-image-upscaler"
+version = "0.1.0"
+description = "Local-first 4K and 8K image restoration web application"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Christopher Filsinger" }]
+keywords = ["super-resolution", "upscaling", "image-restoration", "local-first"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: GPU :: NVIDIA CUDA",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+]
+dependencies = [
+  "anyio>=4.5,<4.10",
+  "fastapi>=0.141,<0.142",
+  # The finishing sharpener works on a float luminance plane; Pillow alone
+  # cannot carry signed detail layers without quantising every one of them.
+  "numpy>=1.26,<3",
+  "pillow>=11.0,<13",
+  "python-multipart>=0.0.18,<1",
+  # Imported directly by the local-only middleware and static frontend mount.
+  # 1.3.1 fixes the request parsing advisories that affect older releases.
+  "starlette>=1.3.1,<1.4",
+  "uvicorn[standard]>=0.34,<0.35",
+]
+
+# Keep this table last in `[project]`: a table header ends the key/value block
+# above it, so anything placed between `[project]` and its arrays is read as a
+# URL and rejected.
+[project.urls]
+Homepage = "https://github.com/chrysogonus/local-image-upscaler"
+Repository = "https://github.com/chrysogonus/local-image-upscaler"
+Issues = "https://github.com/chrysogonus/local-image-upscaler/issues"
+Changelog = "https://github.com/chrysogonus/local-image-upscaler/releases"
+
+[project.optional-dependencies]
+# Optional GPU engine. Kept out of the base install because torch is orders of
+# magnitude larger than the rest of the application and the classical and
+# NCNN engines do not need it. The wheel must match the local CUDA runtime;
+# see the CUDA section of docs/install.md for the correct index URL.
+cuda = [
+  "torch>=2.5",
+]
+# Transformer super-resolution. spandrel carries HAT, DAT, DRCT, SwinIR, ATD,
+# SPAN, RGT and PLKSR under permissive licences, so this one extra covers every
+# architecture the Upscale engine can be pointed at.
+swinir = [
+  "spandrel>=0.4,<0.5",
+  "torch>=2.5",
+  "torchvision>=0.20",
+]
+# Drives a separate, already-installed ComfyUI over its local HTTP API for the
+# Illustration mode. No weights and no torch: the model belongs to that
+# application, not this one. Only the websocket client is needed, because
+# ComfyUI reports per-node progress and returns the finished image over the
+# socket; the rest is stdlib urllib.
+comfyui = [
+  "websockets>=13,<18",
+]
+dev = [
+  "httpx>=0.28,<1",
+  "mypy>=2.3,<3",
+  "pip-audit>=2.10,<3",
+  "pytest>=8.3,<10",
+  "pytest-asyncio>=0.25,<2",
+  "pytest-cov>=7.1,<8",
+  "ruff>=0.9,<1",
+  "shellcheck-py>=0.11,<0.12",
+]
+
+[project.scripts]
+upscaler = "upscaler.__main__:main"
+upscaler-benchmark = "upscaler.benchmark.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/upscaler"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["backend/tests"]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["upscaler"]
+
+[tool.mypy]
+check_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+branch = true
+source = ["upscaler"]
+
+[tool.coverage.report]
+fail_under = 72
+show_missing = true
+skip_covered = true

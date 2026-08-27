@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "id": "faithful-photo-v1",
+  "name": "Faithful photo upscaling v1",
+  "description": "Public-domain photographs curated for perceptual comparison of faithful 4x upscalers.",
+  "license_policy": "public-domain-only",
+  "rights_url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+  "cases": [
+    {
+      "id": "portrait-detail",
+      "title": "Portrait detail",
+      "track": "paired",
+      "tags": ["portrait", "skin", "hair", "grayscale", "clean-resize"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/jsc2024e022261_alt/jsc2024e022261_alt~orig.jpg",
+        "sha256": "10eb7af4366fa0df169a893a033f9887c5ffe4afa6cea701132642475b4192f0",
+        "width": 4255,
+        "height": 6383,
+        "source_page": "https://images.nasa.gov/details/jsc2024e022261_alt",
+        "creator": "NASA/Robert Markowitz",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 1359, "top": 2423, "width": 1536, "height": 1536},
+      "degradation": "clean"
+    },
+    {
+      "id": "foliage-flowers",
+      "title": "Foliage and flowers",
+      "track": "paired",
+      "tags": ["foliage", "petals", "fine-texture", "optical-softness"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/KSC-03pd2200/KSC-03pd2200~orig.jpg",
+        "sha256": "c529a9b0c421f48ac90319046e5781401e8cbb388e3ccf45c2ee86c7ba671947",
+        "width": 3000,
+        "height": 1955,
+        "source_page": "https://images.nasa.gov/details/KSC-03pd2200",
+        "creator": "NASA/Kennedy Space Center",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 732, "top": 209, "width": 1536, "height": 1536},
+      "degradation": "optical"
+    },
+    {
+      "id": "feather-detail",
+      "title": "Fine feather detail",
+      "track": "paired",
+      "tags": ["wildlife", "feathers", "fine-texture", "noise-jpeg"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/KSC-20170104-PH_GEB01_0015/KSC-20170104-PH_GEB01_0015~orig.JPG",
+        "sha256": "a953a8b2fd7fe8b176557cc7a66d1c990e9e5e5258e37c802b47db08ccfe87fd",
+        "width": 3168,
+        "height": 4752,
+        "source_page": "https://images.nasa.gov/details/KSC-20170104-PH_GEB01_0015",
+        "creator": "NASA/Kennedy Space Center",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 816, "top": 1608, "width": 1536, "height": 1536},
+      "degradation": "noise-jpeg"
+    },
+    {
+      "id": "architectural-edges",
+      "title": "Architectural edges",
+      "track": "paired",
+      "tags": ["architecture", "edges", "geometry", "optical-softness"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/KSC-20170927-PH_KLS01_0002/KSC-20170927-PH_KLS01_0002~orig.JPG",
+        "sha256": "fd6155e1ec6a7f499f8a0ced1a953cb616bfa30ea00f2c05ab6b3be37e21f56d",
+        "width": 3744,
+        "height": 5616,
+        "source_page": "https://images.nasa.gov/details/KSC-20170927-PH_KLS01_0002",
+        "creator": "NASA/Kennedy Space Center",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 1104, "top": 2040, "width": 1536, "height": 1536},
+      "degradation": "optical"
+    },
+    {
+      "id": "fabric-and-metal",
+      "title": "Fabric, skin, and metal",
+      "track": "paired",
+      "tags": ["fabric", "skin", "metal", "combined-degradation"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/s123e006420/s123e006420~orig.jpg",
+        "sha256": "cda088b9eade1557c521eef97eac11a739acb811eef24daf0a74b66ff443b876",
+        "width": 3032,
+        "height": 2008,
+        "source_page": "https://images.nasa.gov/details/s123e006420",
+        "creator": "NASA",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 748, "top": 236, "width": 1536, "height": 1536},
+      "degradation": "combined"
+    },
+    {
+      "id": "lettering-and-landscape",
+      "title": "Lettering and landscape detail",
+      "track": "paired",
+      "tags": ["text", "edges", "foliage", "noise-jpeg"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/GRC-2015-C-01124/GRC-2015-C-01124~orig.jpg",
+        "sha256": "d4a2f2c0531a59ce8fdd280ca50d6e8c8fc01e853faa0157ec62d9d442be0be2",
+        "width": 5500,
+        "height": 4400,
+        "source_page": "https://images.nasa.gov/details/GRC-2015-C-01124",
+        "creator": "NASA/Marvin Smith",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 1982, "top": 1432, "width": 1536, "height": 1536},
+      "degradation": "noise-jpeg"
+    },
+    {
+      "id": "aurora-gradients",
+      "title": "Low-light gradients",
+      "track": "paired",
+      "tags": ["low-light", "gradients", "stars", "combined-degradation"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~orig.jpg",
+        "sha256": "f072bf191f5eec9ceb9458744b828bca8d7d9e4a9fcfeb68b0c8db9bceaf82a9",
+        "width": 8256,
+        "height": 5504,
+        "source_page": "https://images.nasa.gov/details/iss072e159172",
+        "creator": "NASA",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 3360, "top": 1984, "width": 1536, "height": 1536},
+      "degradation": "combined"
+    },
+    {
+      "id": "repeating-solar-cells",
+      "title": "Repeating solar-cell structure",
+      "track": "paired",
+      "tags": ["repeating-pattern", "edges", "reflective", "clean-resize"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/iss007e12797/iss007e12797~orig.jpg",
+        "sha256": "6973408743960a528e4eb42b45a3fe6e242ed027091f96ae598bf28aafe5a407",
+        "width": 3032,
+        "height": 2064,
+        "source_page": "https://images.nasa.gov/details/iss007e12797",
+        "creator": "NASA",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 748, "top": 264, "width": 1536, "height": 1536},
+      "degradation": "clean"
+    },
+    {
+      "id": "archival-lunar-surface",
+      "title": "Archival lunar-surface scan",
+      "track": "authentic",
+      "tags": ["archive-scan", "fabric", "film-grain", "surface-texture"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/6900937/6900937~orig.jpg",
+        "sha256": "e844ffe63151fab98477bd2aa87c503d16311992047daf98ccb1841bce80214b",
+        "width": 2897,
+        "height": 3000,
+        "source_page": "https://images.nasa.gov/details/6900937",
+        "creator": "NASA",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 1192, "top": 1244, "width": 512, "height": 512}
+    },
+    {
+      "id": "archival-aurora",
+      "title": "Noisy archival aurora",
+      "track": "authentic",
+      "tags": ["archive-scan", "low-light", "chroma-noise", "gradients"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/s45-32-014/s45-32-014~orig.jpg",
+        "sha256": "0371662b046104adc54fb03f0ac19909134c07cfdf299a34c11cb603b9bc8062",
+        "width": 2640,
+        "height": 3805,
+        "source_page": "https://images.nasa.gov/details/s45-32-014",
+        "creator": "NASA",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 1064, "top": 1646, "width": 512, "height": 512}
+    },
+    {
+      "id": "distant-wildlife",
+      "title": "Distant wildlife and foliage",
+      "track": "authentic",
+      "tags": ["wildlife", "distant-detail", "optical-softness", "foliage"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/2010-5937/2010-5937~orig.jpg",
+        "sha256": "46567671e2b8e7557ad7b49de2ae9dcf2cc2bb20ab43fe811420b1948aa11d50",
+        "width": 3000,
+        "height": 2000,
+        "source_page": "https://images.nasa.gov/details/2010-5937",
+        "creator": "NASA/Kennedy Space Center",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 1244, "top": 744, "width": 512, "height": 512}
+    },
+    {
+      "id": "archival-launch",
+      "title": "Compressed archival launch",
+      "track": "authentic",
+      "tags": ["archive-scan", "compression", "high-contrast", "smoke"],
+      "source": {
+        "url": "https://images-assets.nasa.gov/image/KSC-98pc686/KSC-98pc686~orig.jpg",
+        "sha256": "ef60e95a3e0ccb6721530875bdde0645e818e47c35afe0f7765b5792c236992c",
+        "width": 1800,
+        "height": 2280,
+        "source_page": "https://images.nasa.gov/details/KSC-98pc686",
+        "creator": "NASA/Kennedy Space Center",
+        "license": "Public domain (NASA)"
+      },
+      "crop": {"left": 644, "top": 884, "width": 512, "height": 512}
+    }
+  ]
+}

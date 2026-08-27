@@ -1,0 +1,63 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Environment and local configuration
+.env
+.env.*
+!.env.example
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# JavaScript / frontend
+node_modules/
+dist/
+build/
+coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+*.tsbuildinfo
+
+# Model weights and inference caches
+models/*
+!models/manifest.json
+weights/
+checkpoints/
+*.ckpt
+*.onnx
+*.pth
+*.pt
+*.safetensors
+
+# Generated images, job state, and temporary data. Anchored to the repository
+# root: unanchored, `jobs/` also matches the backend/upscaler/jobs source
+# package and drops it from both Git and the built wheel.
+/.cache/
+/.upscaler/
+/jobs/
+/output/
+/outputs/
+/tmp/
+/temp/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*

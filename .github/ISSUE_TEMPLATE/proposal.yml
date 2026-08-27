@@ -1,0 +1,91 @@
+name: Change proposal
+description: A new mode, engine, model, dependency, or a change to the pipeline.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Please read
+        [AGENTS.md](https://github.com/chrysogonus/local-image-upscaler/blob/main/AGENTS.md)
+        first — it is the charter review decisions are argued from. The most common
+        reason a large change is declined here is not quality but **scope**:
+        something speculative, or genuinely useful but belonging in a different
+        application. This form exists so you find that out before you write it.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of change?
+      options:
+        - New mode
+        - New model adapter or engine
+        - A different checkpoint for an existing engine
+        - New dependency
+        - Change to the image pipeline
+        - Interface or accessibility change
+        - Documentation
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >-
+        What does the app get wrong today, on what kind of image? Describe the
+        problem before the solution — a proposal that starts from a model is much
+        harder to evaluate than one that starts from a picture it handles badly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+    validations:
+      required: true
+
+  - type: textarea
+    id: claim
+    attributes:
+      label: Does it reconstruct or generate?
+      description: >-
+        Whether it recovers detail the pixels still imply or synthesises detail that
+        was never there. This repository only reconstructs, so a proposal that
+        generates is out of scope here however well it works. Say if it is not
+        clear-cut.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: For a model or dependency, the evidence
+      description: >-
+        AGENTS.md asks for licence, hardware support, memory behaviour, quality
+        evidence, and maintenance status — and specifically not "it is popular" or
+        "it tops a benchmark". If it is a super-resolution checkpoint, say what
+        degradations it was trained to invert: a model trained on clean bicubic
+        downsampling tends to lose to Real-ESRGAN on real photographs.
+      placeholder: |
+        Licence:
+        Hardware support / minimum VRAM:
+        Memory behaviour under tiling:
+        Quality evidence (on what images, judged how):
+        Maintenance status:
+        Trained to invert:
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues.
+          required: true
+        - label: This belongs in a local-first upscaler rather than a general image editor.
+          required: true
+        - label: It reconstructs rather than generates, or I have said why that is unclear.
+          required: false

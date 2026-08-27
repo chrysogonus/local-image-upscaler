@@ -1,0 +1,110 @@
+name: Bug report
+description: Something crashed, hung, failed, or behaved differently from what the docs say.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        **Before attaching an image:** send a synthetic or public-domain file that
+        reproduces the problem rather than a photograph you care about, and never
+        an image of a real person. If the bug is exploitable, stop and use
+        [security advisories](https://github.com/chrysogonus/local-image-upscaler/security/advisories/new)
+        instead of this form.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: >-
+        Include the source image's dimensions and format. The smallest input that
+        still reproduces it is the most useful thing you can send.
+      placeholder: |
+        1. Open the app and select a 480x270 PNG
+        2. Choose Upscale, target 4K
+        3. Press Enhance
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How is it installed?
+      options:
+        - Docker, CPU image (make up)
+        - Docker, CUDA overlay (make up-cuda)
+        - Docker, with ComfyUI (make up-comfyui)
+        - Host install (make run)
+        - Host install, development servers (make dev-backend / dev-frontend)
+        - Other or not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Which mode?
+      options:
+        - Upscale
+        - Illustration
+        - Sharpen
+        - Not mode-specific, or it never got that far
+    validations:
+      required: true
+
+  - type: textarea
+    id: capabilities
+    attributes:
+      label: Capabilities report
+      description: >-
+        This resolves the engine, device, precision, and hardware policy actually in
+        use, which is usually what decides the answer. Paste the output of:
+        `curl -s http://127.0.0.1:8000/api/v1/capabilities | python3 -m json.tool`
+      render: json
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0, or the output of `git rev-parse --short HEAD`
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: OS and architecture, plus the GPU and driver if one is involved.
+      placeholder: Ubuntu 24.04 x86-64, RTX 4070, driver 550
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: >-
+        Backend output, the browser console, or `make logs`. Please remove any file
+        paths you would rather not publish.
+      render: shell
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues.
+          required: true
+        - label: I read [current limitations](https://github.com/chrysogonus/local-image-upscaler/blob/main/docs/reference.md#current-limitations) and this is not one of them.
+          required: true
+        - label: Any image I attach is synthetic, public domain, or mine, and does not depict a real person.
+          required: true

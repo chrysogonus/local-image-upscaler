@@ -1,0 +1,64 @@
+Local 4K / 8K Image Upscaler
+Copyright 2026 Christopher Filsinger
+
+This product includes software developed as part of the Local 4K / 8K Image
+Upscaler project, licensed under the Apache License, Version 2.0 (see LICENSE).
+
+
+================================================================================
+Third-party source code included in this repository
+================================================================================
+
+backend/upscaler/models/rrdbnet.py
+----------------------------------
+
+The RRDBNet generator architecture is vendored from Real-ESRGAN so that the
+CUDA engine's dependency footprint stays at torch alone. Layer names match the
+published checkpoints exactly.
+
+  Real-ESRGAN — https://github.com/xinntao/Real-ESRGAN
+  Copyright (c) 2021, Xintao Wang
+  Licensed under the BSD 3-Clause License:
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice,
+       this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in the
+       documentation and/or other materials provided with the distribution.
+
+    3. Neither the name of the copyright holder nor the names of its
+       contributors may be used to endorse or promote products derived from
+       this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+
+================================================================================
+Model weights and optional runtimes
+================================================================================
+
+No model weights, runtime binaries, or trained checkpoints are distributed in
+this repository. They are downloaded from their original publishers by the
+`make setup-model-*` targets, and each remains under its own licence.
+
+models/manifest.json is the authoritative record: every entry carries the
+publisher, homepage, pinned URL or revision, SHA-256 checksum, and licence.
+
+Some of those licences forbid commercial use. They are isolated in their own
+install targets and Python extras so that enabling one is always a deliberate
+act, and the application labels every result they produce. See the Licensing
+section of README.md for the summary.

@@ -1,0 +1,28 @@
+# Opt-in overlay used by `make up-comfyui`. Host networking lets both services
+# stay on loopback: ComfyUI does not need to expose its unauthenticated API on
+# the LAN just so the app container can reach it.
+services:
+  upscaler:
+    network_mode: host
+    ports: !reset []
+    # Match the host owner so the connector can remove the source it uploaded
+    # into ComfyUI's bind-mounted input directory without running as root.
+    user: ${UPSCALER_COMFYUI_UID:-1000}:${UPSCALER_COMFYUI_GID:-1000}
+    build:
+      args:
+        # ComfyUI owns the neural runtime and models; the connector image needs
+        # only websockets and remains CPU-safe itself.
+        UPSCALER_EXTRAS: ${UPSCALER_COMFYUI_EXTRAS:-comfyui}
+    image: local-image-upscaler:comfyui
+    environment:
+      UPSCALER_HOST: 127.0.0.1
+      UPSCALER_SKIP_WEIGHTS: 1
+      UPSCALER_COMFYUI_URL: http://127.0.0.1:${COMFYUI_PORT:-8188}
+      UPSCALER_COMFYUI_INPUT_DIR: /comfyui-input
+    volumes: !reset
+      - type: bind
+        source: ${COMFYUI_ROOT:?Set COMFYUI_ROOT to the ComfyUI installation}/input
+        target: /comfyui-input
+      - type: bind
+        source: ${UPSCALER_COMFYUI_WORK_ROOT:-./.upscaler/comfyui-container-work}
+        target: /work

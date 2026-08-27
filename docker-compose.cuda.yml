@@ -1,0 +1,20 @@
+# Explicit NVIDIA deployment. The default compose file is CPU-safe; this
+# overlay is the only supported path that reserves a GPU and installs torch.
+services:
+  upscaler:
+    image: local-image-upscaler:cuda
+    build:
+      args:
+        RUNTIME_IMAGE: nvidia/cuda:13.0.1-runtime-ubuntu24.04@sha256:c3fde347d52d578c84fd644bc177bc7ec333feaf11550d990da4084d7612e4c7
+        UPSCALER_EXTRAS: ${UPSCALER_EXTRAS-swinir}
+    environment:
+      UPSCALER_FETCH_REALESRGAN: ${UPSCALER_FETCH_REALESRGAN:-1}
+      UPSCALER_FETCH_SWINIR: ${UPSCALER_FETCH_SWINIR:-1}
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

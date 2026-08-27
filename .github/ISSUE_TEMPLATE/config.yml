@@ -1,0 +1,12 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/chrysogonus/local-image-upscaler/security/advisories/new
+    about: >-
+      Anything exploitable goes here privately, not in a public issue. SECURITY.md
+      explains what is in scope for a local-first application.
+  - name: Read the documentation first
+    url: https://github.com/chrysogonus/local-image-upscaler/tree/main/docs
+    about: >-
+      Installation, deployment, engines, the mode reference, and current limitations.
+      A mode that reports itself unavailable usually states the missing command.

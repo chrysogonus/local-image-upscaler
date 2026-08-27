@@ -1,0 +1,121 @@
+{
+  "1": {
+    "_meta": {
+      "title": "1. Your illustration"
+    },
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
+    }
+  },
+  "2": {
+    "_meta": {
+      "title": "2. Illustration model"
+    },
+    "class_type": "UpscaleModelLoader",
+    "inputs": {
+      "model_name": "RealESRGAN_x4plus_anime_6B.pth"
+    }
+  },
+  "3": {
+    "_meta": {
+      "title": "3. Faithful pixel-space x4 reconstruction"
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ],
+      "upscale_model": [
+        "2",
+        0
+      ]
+    }
+  },
+  "4": {
+    "_meta": {
+      "title": "4. One exact resize to the requested dimensions"
+    },
+    "class_type": "ImageScale",
+    "inputs": {
+      "crop": "disabled",
+      "height": 2160,
+      "image": [
+        "3",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": 3840
+    }
+  },
+  "5": {
+    "_meta": {
+      "title": "Preserve the source transparency"
+    },
+    "class_type": "MaskToImage",
+    "inputs": {
+      "mask": [
+        "1",
+        1
+      ]
+    }
+  },
+  "6": {
+    "_meta": {
+      "title": "Scale transparency to the same exact dimensions"
+    },
+    "class_type": "ImageScale",
+    "inputs": {
+      "crop": "disabled",
+      "height": 2160,
+      "image": [
+        "5",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": 3840
+    }
+  },
+  "7": {
+    "_meta": {
+      "title": "Restore transparency mask"
+    },
+    "class_type": "ImageToMask",
+    "inputs": {
+      "channel": "red",
+      "image": [
+        "6",
+        0
+      ]
+    }
+  },
+  "8": {
+    "_meta": {
+      "title": "Restore transparency without flattening"
+    },
+    "class_type": "JoinImageWithAlpha",
+    "inputs": {
+      "alpha": [
+        "7",
+        0
+      ],
+      "image": [
+        "4",
+        0
+      ]
+    }
+  },
+  "9": {
+    "_meta": {
+      "title": "RESULT"
+    },
+    "class_type": "SaveImageWebsocket",
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ]
+    }
+  }
+}

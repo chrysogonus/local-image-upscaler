@@ -1,0 +1,67 @@
+services:
+  upscaler:
+    build:
+      context: .
+      args:
+        # The default image contains no CUDA, torch, or neural weights. The
+        # digest-pinned NVIDIA base and neural extras live in the explicit CUDA
+        # overlay, docker-compose.cuda.yml.
+        UPSCALER_EXTRAS: ${UPSCALER_EXTRAS:-}
+    image: local-image-upscaler:cpu
+
+    # Published on the host's loopback only. Reach it from another machine with
+    # an SSH tunnel, not by widening this binding — LocalOnlyMiddleware rejects
+    # requests that arrive with a non-loopback Host header anyway.
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    environment:
+      # Binds the container's own interface so the published port can reach it.
+      UPSCALER_HOST: 0.0.0.0
+      UPSCALER_PORT: 8000
+      # bf16 where supported, else fp32. Set fp32 to rule out precision effects.
+      UPSCALER_CUDA_PRECISION: ${UPSCALER_CUDA_PRECISION:-auto}
+      UPSCALER_MAX_UPLOAD_BYTES: ${UPSCALER_MAX_UPLOAD_BYTES:-104857600}
+      # Safe mode hides installed features that do not fit stable capacity and
+      # rechecks free memory immediately before a job is queued.
+      UPSCALER_HARDWARE_POLICY: ${UPSCALER_HARDWARE_POLICY:-safe}
+      UPSCALER_RAM_RESERVE_MIB: ${UPSCALER_RAM_RESERVE_MIB:-4096}
+      UPSCALER_VRAM_RESERVE_MIB: ${UPSCALER_VRAM_RESERVE_MIB:-1536}
+      # Optional corrections for hosts whose driver/container does not report
+      # capacity correctly. Leave empty for automatic detection.
+      UPSCALER_RAM_MIB: ${UPSCALER_RAM_MIB:-}
+      UPSCALER_VRAM_MIB: ${UPSCALER_VRAM_MIB:-}
+      UPSCALER_GPU_NAME: ${UPSCALER_GPU_NAME:-}
+      UPSCALER_MEMORY_KIND: ${UPSCALER_MEMORY_KIND:-}
+      # The CPU image deliberately downloads no model weights. CUDA and optional
+      # overlays opt into each group explicitly.
+      UPSCALER_FETCH_REALESRGAN: ${UPSCALER_FETCH_REALESRGAN:-0}
+      UPSCALER_FETCH_SWINIR: ${UPSCALER_FETCH_SWINIR:-0}
+
+    volumes:
+      # Model weights survive image rebuilds.
+      - weights:/weights
+      # Per-job scratch space. tmpfs would put full-resolution intermediates in
+      # RAM, so this stays a normal volume.
+      - work:/work
+
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - |
+          import urllib.request
+          urllib.request.urlopen("http://127.0.0.1:8000/api/v1/health", timeout=5).read()
+      interval: 30s
+      timeout: 10s
+      # Generous: the first start downloads weights before the server binds.
+      start_period: 180s
+      retries: 3
+
+volumes:
+  weights:
+  work:
