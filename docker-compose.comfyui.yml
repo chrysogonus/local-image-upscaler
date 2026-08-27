@@ -19,7 +19,7 @@ services:
       UPSCALER_SKIP_WEIGHTS: 1
       UPSCALER_COMFYUI_URL: http://127.0.0.1:${COMFYUI_PORT:-8188}
       UPSCALER_COMFYUI_INPUT_DIR: /comfyui-input
-    volumes: !reset
+    volumes: !override
       - type: bind
         source: ${COMFYUI_ROOT:?Set COMFYUI_ROOT to the ComfyUI installation}/input
         target: /comfyui-input
