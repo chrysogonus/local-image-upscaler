@@ -4,6 +4,18 @@ A local-first web application for high-quality image enlargement and refinement.
 
 Images are sent only to a service bound to `127.0.0.1`; no cloud API or telemetry is used.
 
+## What it produces
+
+![Illustration mode at 1:1 pixels. The left half is the 4K result: individually resolved fur strokes across the creature's ruff and crisp filigree on the stone arch behind it. The right half is the source at the same zoom, covering more of the scene at visibly softer detail.](docs/images/illustration-creature-comparison.webp)
+
+![Illustration mode at 1:1 pixels. The left half is the 4K result: separated leaves, resolved spray at the lip of the falls, and defined carving on the arches above them. The right half is the source at the same zoom, wider and softer.](docs/images/illustration-waterfall-comparison.webp)
+
+Both strips show **Illustration** mode at 1:1 output pixels — left the 4K result, right the
+source. The result covers less of the scene at the same zoom because it has twice the
+pixels across. They are WebP-compressed for the web; the application's own comparison view
+is where sharpness is worth judging. The default **Upscale** mode targets photographs
+instead, and [Modes](#modes) sets out what each one claims.
+
 ## Reconstruction only
 
 Every mode here **reconstructs**: it recovers detail the pixels still imply. No stage in
