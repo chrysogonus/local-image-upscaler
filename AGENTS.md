@@ -67,7 +67,7 @@ Model weights, large outputs, and local job data stay out of Git. Downloads need
 
 - Focused tests with small generated fixtures. Prefer deterministic pure functions for dimension math, tile coordinates, blending weights, and option validation.
 - Cover portrait, landscape, odd dimensions, tiny inputs, already-large inputs, grayscale, alpha, EXIF-rotated, and malformed files.
-- Never commit copyrighted photos, model weights, 4K/8K outputs, or private images.
+- Never commit model weights, copyrighted photographs, private images, or the incidental output of a local job. Curated showcase and documentation images are the deliberate exception: keep them under `docs/images/`, yours to publish or permissively licensed, free of identifiable people, and sized for display rather than shipped at full 4K/8K.
 - Don't add a dependency or pin a model because it is popular. Document license, hardware support, memory behavior, quality evidence, and maintenance status.
 
 ## Repository and commands

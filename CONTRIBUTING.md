@@ -93,10 +93,16 @@ Most of this follows from `AGENTS.md`, but these are the recurring ones:
 
 ## Things that must never be committed
 
-Model weights, copyrighted photographs, 4K/8K outputs, private images, or local
-job data. `.gitignore` covers the usual paths; please check `git status` before
-committing rather than relying on it. Test fixtures should be generated in code,
-not checked in.
+Model weights, copyrighted photographs, private images, or local job data.
+`.gitignore` covers the usual paths; please check `git status` before committing
+rather than relying on it. Test fixtures should be generated in code, not
+checked in.
+
+Showcase and documentation images are the one deliberate exception. They live in
+`docs/images/`, have to be yours to publish or permissively licensed and free of
+identifiable people, and should be downscaled and compressed for display. A
+full-resolution 4K or 8K result belongs on a GitHub Release rather than in the
+history, where every clone pays for it forever.
 
 ## Workflows
 
