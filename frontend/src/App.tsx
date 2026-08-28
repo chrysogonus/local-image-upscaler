@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { cancelOrDeleteJob, createJob, fetchResult, getCapabilities, observeJob } from "./api";
 import { CompareStage } from "./components/CompareStage";
 import { ProgressStatus } from "./components/ProgressStatus";
@@ -53,23 +54,30 @@ function inspectImage(file: File, url: string): Promise<LocalImageInfo> {
   });
 }
 
-function AppHeader() {
-  return (
-    <header className="app-header">
-      <div className="eyebrow">Image / local refinement</div>
-      <div className="header-copy">
-        <h1>More detail, kept honest.</h1>
-        <p>
-          Private 4K and 8K upscaling on your computer. Choose a mode, choose a size, and the app
-          picks the right engine, model, and settings for it.
-        </p>
-        <div className="local-badge">
-          <span />
-          127.0.0.1 only
-        </div>
-      </div>
-    </header>
-  );
+/**
+ * A disclosure that floats its panel over the stage instead of pushing the
+ * layout: everything has to stay on one screen, and these two are the rarely
+ * opened halves. Native details keeps the keyboard and semantics; the hook
+ * adds the dismissal a floating panel needs.
+ */
+function useDismissable(open: boolean, close: () => void) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) close();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [close, open]);
+  return ref;
 }
 
 function formatMib(value: number | null): string {
@@ -109,9 +117,7 @@ export function HardwarePanel({ capabilities }: { capabilities: Capabilities }) 
           ))}
         </div>
       ))}
-      <p>
-        Choices use stable total capacity. Free memory is checked again when a job is submitted.
-      </p>
+      <p>Sizes use total capacity; free memory is rechecked at submit.</p>
       {capabilities.excluded_features.length ? (
         <details>
           <summary>
@@ -151,10 +157,14 @@ export function App() {
   const [viewMode, setViewMode] = useState<"original" | "result" | "split">("original");
   const [split, setSplit] = useState(50);
   const [pixelView, setPixelView] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [hardwareOpen, setHardwareOpen] = useState(false);
   const stopObserving = useRef<(() => void) | null>(null);
   const loadedResultFor = useRef<string | null>(null);
   const fileUrl = useRef<string | null>(null);
   const resultObjectUrl = useRef<string | null>(null);
+  const advancedRef = useDismissable(advancedOpen, () => setAdvancedOpen(false));
+  const hardwareRef = useDismissable(hardwareOpen, () => setHardwareOpen(false));
 
   const refreshCapabilities = useCallback(async () => {
     try {
@@ -417,271 +427,233 @@ export function App() {
     plannedPasses.length > 0 && !(plannedPasses.length === 1 && plannedPasses[0] === 1);
   const resultIsGenerative = job?.result ? job.result.generative : Boolean(selected?.generative);
 
+  // Every caveat the run needs, gathered into the one bounded strip above the
+  // controls. None of them may be dropped for space: they are the claims.
+  const notices: { key: string; tone: "warn" | "error"; body: ReactNode }[] = [];
+  if (capabilityError)
+    notices.push({
+      key: "backend",
+      tone: "error",
+      body: `Local backend unavailable: ${capabilityError}`,
+    });
+  if (uiError) notices.push({ key: "ui", tone: "error", body: uiError });
+  if (resultIsGenerative)
+    notices.push({ key: "generative", tone: "warn", body: GENERATIVE_NOTICE });
+  if (sourceAlreadyLarge && !restoreLarge)
+    notices.push({
+      key: "already-large",
+      tone: "warn",
+      body: "The source already meets this target. Neural enlargement will be skipped and one faithful reduction will be used.",
+    });
+  if (fallbackReason)
+    notices.push({
+      key: "fallback",
+      tone: "warn",
+      body: (
+        <>
+          {fallbackReason} This mode currently uses deterministic Lanczos resampling, which cannot
+          add detail.{" "}
+          <button type="button" onClick={() => void refreshCapabilities()}>
+            Detect again
+          </button>
+        </>
+      ),
+    });
+  if (isUpscalingMode(mode) && !safeTargets.length)
+    notices.push({
+      key: "no-targets",
+      tone: "warn",
+      body: "No target size fits this image and the hardware policy.",
+    });
+  for (const warning of job?.result?.warnings ?? [])
+    notices.push({ key: `result:${warning}`, tone: "warn", body: warning });
+
   return (
     <main className="app-shell">
-      <AppHeader />
-      {capabilityError ? (
-        <div className="global-error">Local backend unavailable: {capabilityError}</div>
-      ) : null}
-      <div className="workspace-grid">
-        <div className="source-column">
-          {!file || !localImage ? (
-            <label
-              className={`drop-zone ${dragging ? "dragging" : ""}`}
-              onDragEnter={(event) => {
-                event.preventDefault();
-                setDragging(true);
+      <header className="app-bar">
+        <h1 className="wordmark">Upscaler</h1>
+        <span className="local-badge">
+          <span />
+          127.0.0.1 only
+        </span>
+        <span className="bar-note">Inferred detail, not evidence. Check at 1:1.</span>
+        {capabilities ? (
+          <details
+            className="popover hardware-popover"
+            ref={hardwareRef}
+            open={hardwareOpen}
+            onToggle={(event) => setHardwareOpen(event.currentTarget.open)}
+          >
+            <summary>{selectedHardware?.gpu_name ?? "CPU only"}</summary>
+            <div className="popover-panel">
+              <HardwarePanel capabilities={capabilities} />
+            </div>
+          </details>
+        ) : null}
+        <span className="bar-version">
+          {capabilities ? `v${capabilities.version}` : "connecting"}
+        </span>
+      </header>
+
+      <div className="stage-area">
+        {!file || !localImage ? (
+          <label
+            className={`drop-zone ${dragging ? "dragging" : ""}`}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragOver={(event) => event.preventDefault()}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragging(false);
+              const dropped = event.dataTransfer.files[0];
+              if (dropped) void chooseFile(dropped);
+            }}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const chosen = event.target.files?.[0];
+                if (chosen) void chooseFile(chosen);
               }}
-              onDragOver={(event) => event.preventDefault()}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(event) => {
-                event.preventDefault();
-                setDragging(false);
-                const dropped = event.dataTransfer.files[0];
-                if (dropped) void chooseFile(dropped);
-              }}
-            >
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                  const chosen = event.target.files?.[0];
-                  if (chosen) void chooseFile(chosen);
-                }}
-              />
-              <span className="drop-index">01</span>
-              <strong>Choose an image</strong>
-              <span>
-                Drop, paste, or browse. PNG, JPEG, WebP, GIF, and other browser-decodable still
-                formats.
-              </span>
-              <span className="browse-button">Browse files</span>
-            </label>
-          ) : (
-            <>
-              <div className="source-heading">
-                <div>
-                  <span>Source</span>
-                  <strong>{file.name}</strong>
-                </div>
-                <label className="replace-button">
-                  Replace
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(event) => {
-                      const chosen = event.target.files?.[0];
-                      if (chosen) void chooseFile(chosen);
-                    }}
-                  />
-                </label>
-              </div>
-              <CompareStage
-                originalUrl={localImage.url}
-                resultUrl={resultUrl}
-                width={resultDimensions?.width ?? localImage.width}
-                height={resultDimensions?.height ?? localImage.height}
-                mode={viewMode}
-                onModeChange={setViewMode}
-                split={split}
-                onSplitChange={setSplit}
-                pixelView={pixelView}
-                onPixelViewChange={setPixelView}
-                resultLabel={resultLabel}
-              />
-              <div className="dimension-strip">
-                <span>
+            />
+            <strong>Choose an image</strong>
+            <span>Drop, paste, or browse · PNG · JPEG · WebP · GIF</span>
+            <span className="browse-button">Browse files</span>
+          </label>
+        ) : (
+          <CompareStage
+            originalUrl={localImage.url}
+            resultUrl={resultUrl}
+            width={resultDimensions?.width ?? localImage.width}
+            height={resultDimensions?.height ?? localImage.height}
+            mode={viewMode}
+            onModeChange={setViewMode}
+            split={split}
+            onSplitChange={setSplit}
+            pixelView={pixelView}
+            onPixelViewChange={setPixelView}
+            resultLabel={resultLabel}
+            filename={file.name}
+            onReplaceFile={(next) => void chooseFile(next)}
+          />
+        )}
+      </div>
+
+      <div className="run-bar">
+        {notices.length ? (
+          <div className="notices">
+            {notices.map((notice) => (
+              <p
+                key={notice.key}
+                className={notice.tone === "error" ? "inline-error" : "inline-warning"}
+              >
+                {notice.body}
+              </p>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="info-strip">
+          <p className="mode-line" id="selected-mode-description">
+            <b>{selected?.name ?? "—"}</b>
+            {selected ? selected.description : "Detecting the local engine."}
+          </p>
+          <div className="run-facts">
+            {localImage && resultDimensions ? (
+              <>
+                <span title="Source">
                   {localImage.width.toLocaleString()} × {localImage.height.toLocaleString()}
                 </span>
                 <span className="arrow">→</span>
-                <strong>
-                  {resultDimensions?.width.toLocaleString()} ×{" "}
-                  {resultDimensions?.height.toLocaleString()}
+                <strong title="Output">
+                  {resultDimensions.width.toLocaleString()} ×{" "}
+                  {resultDimensions.height.toLocaleString()}
                 </strong>
-                <span>{resultScale?.toFixed(2)}×</span>
-                <span>{formatBytes(file.size)}</span>
-              </div>
-            </>
-          )}
+                <span title="Scale">{resultScale?.toFixed(2)}×</span>
+                <span title="Output format">PNG</span>
+              </>
+            ) : null}
+            <span title="Engine">{job?.result?.engine ?? selected?.engine ?? "Detecting"}</span>
+            <span title="Processor">{selected?.device ?? "Detecting"}</span>
+            {showPassPlan ? (
+              <span title="Neural passes">
+                {plannedPasses.map((scale) => `${scale}×`).join(" → ")}
+              </span>
+            ) : null}
+            {memoryEstimate ? (
+              <span title="Working-memory estimate">mem {formatBytes(memoryEstimate)}</span>
+            ) : null}
+            {job?.result?.resolved_tile_size ? (
+              <span title="Resolved tile size">tile {job.result.resolved_tile_size} px</span>
+            ) : null}
+          </div>
         </div>
 
-        <aside className="settings-panel">
-          <div className="panel-title">
-            <span>Settings &amp; output</span>
-            <span>{capabilities ? `v${capabilities.version}` : "connecting"}</span>
-          </div>
-          <div className="run-panel">
-            {localImage && resultDimensions ? (
-              <div className="resource-card">
-                <div>
-                  <span>Operation</span>
-                  <b>{job?.result ? resultLabel : (selected?.name ?? "—")}</b>
-                </div>
-                <div>
-                  <span>Output</span>
-                  <b>
-                    {resultDimensions.width.toLocaleString()} ×{" "}
-                    {resultDimensions.height.toLocaleString()} PNG
-                  </b>
-                </div>
-                <div>
-                  <span>Working-memory estimate</span>
-                  <b>{memoryEstimate ? formatBytes(memoryEstimate) : "—"}</b>
-                </div>
-                <div>
-                  <span>Engine</span>
-                  <b>{job?.result?.engine ?? selected?.engine ?? "Detecting"}</b>
-                </div>
-                <div>
-                  <span>Processor</span>
-                  <b>{selected?.device ?? "Detecting"}</b>
-                </div>
-                {showPassPlan ? (
-                  <div>
-                    <span>Neural passes</span>
-                    <b>{plannedPasses.map((scale) => `${scale}×`).join(" → ")}</b>
-                  </div>
-                ) : null}
-                {job?.result && job.result.resolved_tile_size ? (
-                  <div>
-                    <span>Resolved tile</span>
-                    <b>{job.result.resolved_tile_size} px</b>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            {resultIsGenerative ? <p className="inline-warning">{GENERATIVE_NOTICE}</p> : null}
-            {sourceAlreadyLarge && !restoreLarge ? (
-              <p className="inline-warning">
-                The source already meets this target. Neural enlargement will be skipped and one
-                faithful reduction will be used.
-              </p>
-            ) : null}
-            {fallbackReason ? (
-              <p className="inline-warning">
-                {fallbackReason} This mode currently uses deterministic Lanczos resampling, which
-                cannot add detail.{" "}
-                <button type="button" onClick={() => void refreshCapabilities()}>
-                  Detect again
-                </button>
-              </p>
-            ) : null}
-            {uiError ? <p className="inline-error">{uiError}</p> : null}
-            <ProgressStatus job={job} hasSource={Boolean(file)} />
+        <ProgressStatus job={job} />
 
-            <div className="actions">
-              {busy ? (
-                <button className="primary-button cancel" onClick={() => void cancel()}>
-                  Cancel processing
-                </button>
-              ) : (
+        <div className="control-row">
+          <fieldset className="control-group">
+            <legend>Mode</legend>
+            <div className="segmented" role="group" aria-label="Processing mode">
+              {modes.map((entry) => (
                 <button
-                  className="primary-button"
-                  disabled={
-                    !file || !selected?.available || (isUpscalingMode(mode) && !safeTargets.length)
-                  }
-                  onClick={() => void run()}
+                  key={entry.mode}
+                  aria-pressed={mode === entry.mode}
+                  aria-describedby={mode === entry.mode ? "selected-mode-description" : undefined}
+                  onClick={() => selectMode(entry.mode)}
+                  disabled={busy}
                 >
-                  {processingAction(mode)}
+                  {entry.name}
+                  {entry.generative ? <em>Generative</em> : null}
                 </button>
-              )}
-              <button
-                className="secondary-button"
-                disabled={!job?.result || !resultUrl || downloaded}
-                onClick={() => void download()}
-              >
-                {downloaded
-                  ? "Downloaded · local job cleaned"
-                  : job?.result
-                    ? `Download PNG · ${formatBytes(job.result.bytes)}`
-                    : "Download result"}
-              </button>
+              ))}
             </div>
-            {job?.result?.warnings.length ? (
-              <ul className="warnings-list">
-                {job.result.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-          <div className="settings-body">
-            {capabilities ? <HardwarePanel capabilities={capabilities} /> : null}
-            <fieldset>
-              <legend>What should happen</legend>
-              <div className="goal-grid mode-grid">
-                {modes.map((entry) => {
-                  const id = entry.mode;
-                  return (
-                    <button
-                      key={id}
-                      className="goal-card mode-card"
-                      aria-pressed={mode === id}
-                      aria-describedby={mode === id ? "selected-mode-description" : undefined}
-                      onClick={() => selectMode(id)}
-                      disabled={busy}
-                    >
-                      <span className="goal-heading">
-                        <strong>{entry.name}</strong>
-                        {entry.generative ? <em>Generative</em> : null}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mode-description" id="selected-mode-description">
-                {selected ? selected.description : "Detecting the local engine."}
-              </p>
-            </fieldset>
+          </fieldset>
 
-            {isUpscalingMode(mode) ? (
-              <fieldset disabled={busy}>
-                <legend>Target resolution</legend>
-                <div className="target-grid">
-                  {safeTargets.map((edge) => (
-                    <button
-                      key={edge}
-                      className="target-card"
-                      aria-pressed={targetEdge === edge}
-                      onClick={() => setTargetEdge(edge)}
-                    >
-                      <strong>{edge === 3840 ? "4K" : edge === 7680 ? "8K" : `${edge}px`}</strong>
-                      <span>{edge.toLocaleString()} px long edge</span>
-                    </button>
-                  ))}
-                </div>
-                {!safeTargets.length ? (
-                  <p className="field-note">
-                    No target size fits the current image and hardware policy.
-                  </p>
-                ) : null}
-              </fieldset>
-            ) : null}
-
-            <fieldset disabled={busy}>
-              <legend>Finishing</legend>
-              <div className="preset-grid">
-                {sharpenPresets(mode).map((preset) => (
+          {isUpscalingMode(mode) && safeTargets.length ? (
+            <fieldset className="control-group" disabled={busy}>
+              <legend>Target</legend>
+              <div className="segmented" role="group" aria-label="Target resolution">
+                {safeTargets.map((edge) => (
                   <button
-                    key={preset.label}
-                    className="target-card"
-                    aria-pressed={sharpen === preset.value}
-                    onClick={() => setSharpen(preset.value)}
+                    key={edge}
+                    aria-pressed={targetEdge === edge}
+                    onClick={() => setTargetEdge(edge)}
                   >
-                    <strong>{preset.label}</strong>
-                    <span>{preset.value}%</span>
+                    {edge === 3840 ? "4K" : edge === 7680 ? "8K" : `${edge} px`}
                   </button>
                 ))}
               </div>
-              <p className="field-note">
-                Luminance-only sharpening at three scales, with halos clamped. It recovers clarity
-                the resize cost; it cannot add detail the pixels never implied. Fine-tune it under
-                Advanced processing.
-              </p>
             </fieldset>
+          ) : null}
 
-            <details className="advanced">
-              <summary>Advanced processing</summary>
+          <fieldset className="control-group" disabled={busy}>
+            <legend>Finishing</legend>
+            <div className="segmented" role="group" aria-label="Sharpening">
+              {sharpenPresets(mode).map((preset) => (
+                <button
+                  key={preset.label}
+                  aria-pressed={sharpen === preset.value}
+                  onClick={() => setSharpen(preset.value)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <details
+            className="popover advanced"
+            ref={advancedRef}
+            open={advancedOpen}
+            onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
+          >
+            <summary>Advanced processing</summary>
+            <div className="popover-panel">
               <label className="range-field">
                 <span>
                   <b>Sharpening strength</b>
@@ -696,11 +668,11 @@ export function App() {
                   disabled={busy}
                 />
               </label>
+              <p className="field-note">
+                Luminance only, halos clamped. Cannot add detail the pixels never implied.
+              </p>
               {sharpen >= 60 ? (
-                <p className="inline-warning">
-                  High sharpening can create halos and brittle-looking texture. Inspect the result
-                  at 1:1.
-                </p>
+                <p className="inline-warning">High strength can create halos. Check at 1:1.</p>
               ) : null}
               {tileChoices.length ? (
                 <label className="select-field">
@@ -728,10 +700,7 @@ export function App() {
                   />
                   <span>
                     <b>Test-time augmentation</b>
-                    <small>
-                      Can improve difficult edges. Costs eight inferences per pass, so it compounds
-                      with a chained plan.
-                    </small>
+                    <small>Slightly better edges. Eight inferences per pass.</small>
                   </span>
                 </label>
               ) : null}
@@ -745,9 +714,7 @@ export function App() {
                   />
                   <span>
                     <b>Restore before reducing</b>
-                    <small>
-                      Run neural restoration even when the source already exceeds the target.
-                    </small>
+                    <small>Run the model even though the source already exceeds the target.</small>
                   </span>
                 </label>
               ) : null}
@@ -768,21 +735,43 @@ export function App() {
                     </select>
                   </label>
                   <p className="field-note">
-                    One pass enlarges up to 4x. Beyond that the remainder falls back to a plain
-                    resample, so a small source needs several chained passes to stay sharp.
+                    One pass enlarges up to 4×; the remainder is plain resampling.
                   </p>
                 </>
               ) : null}
-            </details>
+            </div>
+          </details>
+
+          <div className="actions">
+            {busy ? (
+              <button className="primary-button cancel" onClick={() => void cancel()}>
+                Cancel
+              </button>
+            ) : (
+              <button
+                className="primary-button"
+                disabled={
+                  !file || !selected?.available || (isUpscalingMode(mode) && !safeTargets.length)
+                }
+                onClick={() => void run()}
+              >
+                {processingAction(mode)}
+              </button>
+            )}
+            <button
+              className="secondary-button"
+              disabled={!job?.result || !resultUrl || downloaded}
+              onClick={() => void download()}
+            >
+              {downloaded
+                ? "Downloaded · job cleared"
+                : job?.result
+                  ? `Download PNG · ${formatBytes(job.result.bytes)}`
+                  : "Download result"}
+            </button>
           </div>
-        </aside>
+        </div>
       </div>
-      <footer>
-        <span>All processing stays on this machine.</span>
-        <span>
-          Neural restoration may generate plausible detail; inspect at 1:1 before relying on it.
-        </span>
-      </footer>
     </main>
   );
 }

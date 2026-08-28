@@ -14,6 +14,8 @@ interface CompareStageProps {
   pixelView: boolean;
   onPixelViewChange: (value: boolean) => void;
   resultLabel: string;
+  filename: string;
+  onReplaceFile: (file: File) => void;
 }
 
 export function CompareStage({
@@ -28,6 +30,8 @@ export function CompareStage({
   pixelView,
   onPixelViewChange,
   resultLabel,
+  filename,
+  onReplaceFile,
 }: CompareStageProps) {
   const effectiveMode = resultUrl ? mode : "original";
   const stackStyle = {
@@ -63,13 +67,29 @@ export function CompareStage({
             Split
           </button>
         </div>
-        <button
-          className="pixel-toggle"
-          aria-pressed={pixelView}
-          onClick={() => onPixelViewChange(!pixelView)}
-        >
-          {pixelView ? "Fit view" : "1:1 output pixels"}
-        </button>
+        <div className="toolbar-source">
+          <span className="source-name" title={filename}>
+            {filename}
+          </span>
+          <label className="replace-button">
+            Replace
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const chosen = event.target.files?.[0];
+                if (chosen) onReplaceFile(chosen);
+              }}
+            />
+          </label>
+          <button
+            className="pixel-toggle"
+            aria-pressed={pixelView}
+            onClick={() => onPixelViewChange(!pixelView)}
+          >
+            {pixelView ? "Fit view" : "1:1 output pixels"}
+          </button>
+        </div>
       </div>
       <div
         className={`stage-viewport ${pixelView ? "pixel-view" : "fit-view"}`}

@@ -177,5 +177,5 @@ test("selects, submits, reports progress, compares, downloads, and remains acces
   await page.getByRole("button", { name: /Download PNG/ }).click();
   expect((await download).suggestedFilename()).toBe("source-upscaled.png");
   await expect.poll(() => deleteRequests).toBe(1);
-  await expect(page.getByRole("button", { name: "Downloaded · local job cleaned" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Downloaded · job cleared" })).toBeVisible();
 });

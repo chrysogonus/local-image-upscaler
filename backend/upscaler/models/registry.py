@@ -39,17 +39,11 @@ MODE_NAMES = {
     ProcessingMode.sharpen_only: "Sharpen",
 }
 MODE_DESCRIPTIONS = {
-    ProcessingMode.upscale: (
-        "Enlarges to 4K or 8K with a neural model that recovers detail the pixels still "
-        "imply. Faithful to the source."
-    ),
+    ProcessingMode.upscale: "Photos and general images. Recovers detail the pixels imply.",
     ProcessingMode.illustration: (
-        "For anime, line art, and digital illustration. Uses a dedicated pixel-space model "
-        "to recover clean drawn edges and texture without reframing or diffusion redraws."
+        "Anime, line art, and digital drawing. Pixel-space model, no redraw."
     ),
-    ProcessingMode.sharpen_only: (
-        "Improves existing edges at the original dimensions. Creates no new resolution."
-    ),
+    ProcessingMode.sharpen_only: "Sharpens edges at the original size. Adds no resolution.",
 }
 
 # The engines each mode may run, best first; the first available one wins.
