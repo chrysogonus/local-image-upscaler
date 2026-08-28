@@ -20,6 +20,8 @@ function renderStage(resultUrl: string | null = "blob:result") {
       pixelView={false}
       onPixelViewChange={onPixelViewChange}
       resultLabel="Upscaled"
+      filename="source.png"
+      onReplaceFile={() => undefined}
     />,
   );
   return { onModeChange, onSplitChange, onPixelViewChange };

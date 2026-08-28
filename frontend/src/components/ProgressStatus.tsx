@@ -2,17 +2,12 @@ import type { JobSnapshot } from "../types";
 
 interface ProgressStatusProps {
   job: JobSnapshot | null;
-  hasSource: boolean;
 }
 
-export function ProgressStatus({ job, hasSource }: ProgressStatusProps) {
-  if (!job) {
-    return (
-      <div className="status idle" role="status">
-        {hasSource ? "Ready to process locally." : "Choose an image to begin."}
-      </div>
-    );
-  }
+export function ProgressStatus({ job }: ProgressStatusProps) {
+  // The live region has to exist before its text changes for a screen reader
+  // to announce it, so the idle state keeps the element and says nothing.
+  if (!job) return <div className="status idle" role="status" aria-live="polite" />;
   const terminalError = job.state === "failed" || job.state === "cancelled";
   return (
     <div

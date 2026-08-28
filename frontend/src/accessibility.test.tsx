@@ -19,8 +19,10 @@ it("has no detectable accessibility violations in the comparison and status cont
         pixelView={false}
         onPixelViewChange={() => undefined}
         resultLabel="Upscaled"
+        filename="source.png"
+        onReplaceFile={() => undefined}
       />
-      <ProgressStatus job={null} hasSource />
+      <ProgressStatus job={null} />
     </main>,
   );
 

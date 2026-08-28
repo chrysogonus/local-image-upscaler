@@ -11,7 +11,7 @@ it("announces measured progress and terminal errors", () => {
     error: "GPU allocation failed",
   } as JobSnapshot;
 
-  render(<ProgressStatus job={job} hasSource />);
+  render(<ProgressStatus job={job} />);
 
   const status = screen.getByRole("status");
   expect(status.getAttribute("aria-live")).toBe("polite");
