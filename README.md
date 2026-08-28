@@ -6,11 +6,20 @@ Images are sent only to a service bound to `127.0.0.1`; no cloud API or telemetr
 
 ## Reconstruction only
 
-Every mode here **reconstructs**: it recovers detail the pixels still imply. Nothing in
-this application synthesises detail that was never in the source. There is no diffusion
-restoration, no face prior, and no prompt — not disabled, not behind a flag, simply not
-part of the project. The test suite asserts it, and the interface reports a `generative`
-flag per mode that is always false.
+Every mode here **reconstructs**: it recovers detail the pixels still imply. No stage in
+this application is built to invent detail. There is no diffusion restoration, no face
+prior, and no prompt — not disabled, not behind a flag, simply not part of the project.
+The test suite asserts it, and the interface reports a `generative` flag per mode that is
+always false.
+
+That flag is a claim about what a stage is *for*, not a promise about every pixel it
+emits. The neural engines are adversarially trained, and an adversarial model asked for a
+plausible edge will sometimes draw texture the source does not contain — fur, fabric
+weave, film grain. That is a property of the prior rather than a stage doing its job, it
+is recorded under [current limitations](docs/reference.md#current-limitations), and it is
+why the line is drawn where it is: a model that invents a detail while trying to recover
+one is a different thing from a mode whose purpose is to make detail up, and only the
+first is in scope here.
 
 That boundary is a scope decision rather than a limitation to work around. Reconstruction
 is the weaker claim about a result and the one that stays honest: from a face forty pixels

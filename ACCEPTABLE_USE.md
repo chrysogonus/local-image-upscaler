@@ -1,9 +1,11 @@
 # Acceptable use
 
 This project enlarges and restores images on your own machine. Every mode it ships
-reconstructs: it recovers detail the pixels still imply. None of them synthesises detail
-that was never in the source. That boundary is deliberate, and this file states what
-follows from it.
+reconstructs: it recovers detail the pixels still imply. None of them is built to invent
+detail — though an adversarially trained model can still emit texture the source did not
+contain, which [`README.md`](README.md#reconstruction-only) and
+[current limitations](docs/reference.md#current-limitations) both record. That boundary is
+deliberate, and this file states what follows from it.
 
 This is not a licence condition. The [Apache 2.0 licence](LICENSE) grants what it grants
 and this document does not add restrictions to it. It is the maintainer's statement of

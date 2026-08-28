@@ -115,7 +115,9 @@ and exclusion reasons. Completed results include the concrete `resolved_tile_siz
 
 - Animated formats process the first frame only.
 - The working neural path converts high-bit-depth input to 8-bit sRGB and reports that loss.
-- Real-ESRGAN can generate plausible texture that was not present in the source.
+- The neural engines are adversarially trained, so Real-ESRGAN and SwinIR can emit plausible
+  texture that was not present in the source. No mode is built to invent detail, but the prior
+  can, and [`README.md`](../README.md#reconstruction-only) draws that line explicitly.
 - The NCNN model installer targets Linux x86-64; other platforms need the CUDA engine or a manually installed compatible executable.
 - The CUDA engine restores color channels only. Transparency is resampled with Lanczos and the result says so.
 - Resource profiles are conservative estimates; custom ComfyUI graphs or driver behavior can still exceed them.
