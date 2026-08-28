@@ -23,9 +23,11 @@ PyTorch stack, and SwinIR:
 ```bash
 make up-cuda
 
-# Confirm the toolkit before the first build.
+# Confirm the toolkit before the first build. This only checks that a GPU
+# container runs at all, so it takes the plain tag; the digest the image
+# actually builds on is pinned once, in the Dockerfile's cuda-runtime stage.
 docker run --rm --gpus all \
-  nvidia/cuda:13.0.1-runtime-ubuntu24.04@sha256:c3fde347d52d578c84fd644bc177bc7ec333feaf11550d990da4084d7612e4c7 \
+  nvidia/cuda:13.0.1-runtime-ubuntu24.04 \
   nvidia-smi
 ```
 
@@ -133,6 +135,13 @@ Configuration:
 | `UPSCALER_VRAM_MIB` | detected | Correct GPU capacity; also enables safe GPU choices when capacity was unknown. |
 | `UPSCALER_GPU_NAME` | detected | Correct the display name. |
 | `UPSCALER_MEMORY_KIND` | detected | Force `dedicated` or `unified`. Use this when a shared-memory accelerator is misclassified. |
+| `UPSCALER_MAX_JOBS` | `1` | How many jobs infer at once. Raising it multiplies peak memory. |
+| `UPSCALER_MAX_QUEUED_JOBS` | `8` | How many jobs may be held at once, running and waiting together. |
+
+`UPSCALER_MAX_QUEUED_JOBS` bounds the queue rather than the inference: an upload is
+streamed to disk as it is accepted, so each waiting job already occupies up to
+`UPSCALER_MAX_UPLOAD_BYTES` of the work root. A submission past the limit receives HTTP
+429 and writes nothing.
 
 These variables are passed through by `docker-compose.yml`. For example, a 128 GiB GB10
 whose driver does not classify its shared pool correctly can be started with:

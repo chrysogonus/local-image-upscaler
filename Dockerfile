@@ -10,6 +10,14 @@ ARG RUNTIME_IMAGE=ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503ea
 FROM ${UV_IMAGE} AS uv
 FROM ${CERTIFICATES_IMAGE} AS certificates
 
+# The CUDA base, declared here as a real stage rather than restated in the
+# Compose overlay and in CI. Dependabot's Docker updater maintains digests it
+# finds on a FROM line, so this is the only place the CUDA pin can live and
+# still be kept current; the overlay selects it with RUNTIME_IMAGE=cuda-runtime,
+# which a FROM resolves as a stage name. BuildKit skips a stage nothing depends
+# on, so the default CPU image neither pulls nor resolves this.
+FROM nvidia/cuda:13.0.1-runtime-ubuntu24.04@sha256:c3fde347d52d578c84fd644bc177bc7ec333feaf11550d990da4084d7612e4c7 AS cuda-runtime
+
 # ---------------------------------------------------------------- frontend --
 FROM ${NODE_IMAGE} AS frontend
 

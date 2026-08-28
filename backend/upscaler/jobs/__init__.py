@@ -1,3 +1,3 @@
-from .manager import JobManager
+from .manager import JobManager, JobQueueFull
 
-__all__ = ["JobManager"]
+__all__ = ["JobManager", "JobQueueFull"]

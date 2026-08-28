@@ -22,6 +22,9 @@ services:
       # bf16 where supported, else fp32. Set fp32 to rule out precision effects.
       UPSCALER_CUDA_PRECISION: ${UPSCALER_CUDA_PRECISION:-auto}
       UPSCALER_MAX_UPLOAD_BYTES: ${UPSCALER_MAX_UPLOAD_BYTES:-104857600}
+      # Bounds the queue, not the inference: every waiting job has already
+      # streamed its upload into the work volume.
+      UPSCALER_MAX_QUEUED_JOBS: ${UPSCALER_MAX_QUEUED_JOBS:-8}
       # Safe mode hides installed features that do not fit stable capacity and
       # rechecks free memory immediately before a job is queued.
       UPSCALER_HARDWARE_POLICY: ${UPSCALER_HARDWARE_POLICY:-safe}

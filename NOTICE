@@ -58,7 +58,13 @@ this repository. They are downloaded from their original publishers by the
 models/manifest.json is the authoritative record: every entry carries the
 publisher, homepage, pinned URL or revision, SHA-256 checksum, and licence.
 
-Some of those licences forbid commercial use. They are isolated in their own
-install targets and Python extras so that enabling one is always a deliberate
-act, and the application labels every result they produce. See the Licensing
-section of README.md for the summary.
+Every entry installed today is permissively licensed and usable commercially:
+MIT for the NCNN/Vulkan runtime, BSD-3-Clause for the Real-ESRGAN weights, and
+Apache-2.0 for SwinIR-L. None carries a noncommercial restriction. See the
+Licensing section of README.md for the summary.
+
+Should a weight whose licence forbids commercial use ever be added, it will get
+its own install target and Python extra so that enabling it is a deliberate act,
+and its restriction will be carried through to the result rather than left in
+this file. Nothing here relies on that today, and the repository integrity tests
+keep this paragraph and models/manifest.json from disagreeing.

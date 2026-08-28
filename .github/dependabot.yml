@@ -1,6 +1,11 @@
 version: 2
 updates:
-  - package-ecosystem: pip
+  # "uv", not "pip": the dependency state lives in pyproject.toml *and* a
+  # committed uv.lock, and CI and the Dockerfile both resolve with
+  # `uv sync --locked`. The pip ecosystem does not maintain uv.lock, so it
+  # would either open nothing or open a pyproject-only bump that fails the
+  # locked sync.
+  - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly

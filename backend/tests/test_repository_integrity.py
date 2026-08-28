@@ -74,6 +74,74 @@ def test_model_manifest_has_complete_immutable_download_metadata() -> None:
         ), f"{entry['id']} must be commit-pinned unless it is gated"
 
 
+# The sentence NOTICE carries while nothing installed is restricted. NOTICE is
+# the legal artifact - it ships in the wheel and at /usr/share/licenses in the
+# container - so it is the one file that must not describe a regime the
+# manifest does not have.
+NO_RESTRICTED_WEIGHTS_CLAIM = "None carries a noncommercial restriction."
+
+
+def test_notice_describes_the_licences_the_manifest_actually_installs() -> None:
+    """Keep the legal notice and the manifest from telling different stories.
+
+    An earlier NOTICE claimed some installed weights forbade commercial use and
+    that the application labelled their results. Neither was true: every entry
+    is permissive, and no product code reads ``noncommercial``. Nothing else in
+    the suite reads NOTICE, so a contradiction there is invisible until someone
+    quotes it back.
+    """
+    manifest = load_json(MANIFEST)
+    weights = manifest["runtimes"] + manifest["weights"] + manifest["repositories"]
+    restricted = sorted(entry["id"] for entry in weights if entry.get("noncommercial"))
+    notice = (REPOSITORY_ROOT / "NOTICE").read_text(encoding="utf-8")
+
+    if restricted:
+        assert NO_RESTRICTED_WEIGHTS_CLAIM not in notice, (
+            f"NOTICE says nothing is restricted, but {', '.join(restricted)} is."
+        )
+        for entry_id in restricted:
+            assert entry_id in notice, f"NOTICE does not name the restricted weight {entry_id}."
+    else:
+        assert NO_RESTRICTED_WEIGHTS_CLAIM in notice, (
+            "No manifest entry is noncommercial, so NOTICE has to say so plainly."
+        )
+        # The claim that used to be wrong, in the present tense that made it a
+        # statement about this tree rather than about a possible future one.
+        assert "Some of those licences forbid commercial use." not in notice
+
+
+def test_base_image_digests_are_pinned_only_in_the_dockerfile() -> None:
+    """One place per pin, so Dependabot's Docker updater reaches all of them.
+
+    The CUDA digest was once restated in the Compose overlay, in CI, and in the
+    deployment guide. Dependabot only maintains digests on a Dockerfile FROM
+    line, so those three drifted by design rather than by accident, and a manual
+    bump that missed one left CI validating an image nobody ran.
+    """
+    dockerfile = (REPOSITORY_ROOT / "Dockerfile").read_text(encoding="utf-8")
+    pinned = set(re.findall(r"@sha256:([0-9a-f]{64})", dockerfile))
+    assert pinned, "the Dockerfile pins no image digests at all"
+
+    others = [
+        path
+        for path in (
+            REPOSITORY_ROOT / "docker-compose.yml",
+            REPOSITORY_ROOT / "docker-compose.cuda.yml",
+            REPOSITORY_ROOT / "docker-compose.comfyui.yml",
+            REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml",
+            *sorted((REPOSITORY_ROOT / "docs").glob("*.md")),
+        )
+        if path.is_file()
+    ]
+    restated = [
+        f"{path.relative_to(REPOSITORY_ROOT)} restates {digest[:12]}"
+        for path in others
+        for digest in re.findall(r"@sha256:([0-9a-f]{64})", path.read_text(encoding="utf-8"))
+        if digest in pinned
+    ]
+    assert not restated, "\n".join(restated)
+
+
 @pytest.mark.parametrize(
     ("workflow_id", "builder_name"),
     [

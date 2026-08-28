@@ -27,6 +27,10 @@ from upscaler.schemas import (
 )
 
 
+class JobQueueFull(RuntimeError):
+    """More jobs are already running or waiting than the queue is allowed to hold."""
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -92,6 +96,18 @@ class JobManager:
         if self._closed:
             raise RuntimeError("job manager is closed")
         self.sweep_expired()
+        # Checked before anything is created or received: max_jobs bounds only
+        # what runs, so without this the queue behind it grows without limit and
+        # each waiting job has already written its upload - up to
+        # max_upload_bytes each - into the work root. Refusing here costs the
+        # caller a fast error instead of a full disk.
+        with self._lock:
+            waiting = sum(1 for job in self._jobs.values() if job.state not in TERMINAL_STATES)
+        if waiting >= self.config.max_queued_jobs:
+            raise JobQueueFull(
+                f"{waiting} jobs are already running or queued, which is the limit. "
+                "Wait for one to finish, or cancel one, before submitting another."
+            )
         # Resolved here rather than mid-job so an unavailable mode is refused up
         # front, instead of after the user waits through an upload.
         preliminary_plan = self.models.resolve_job(settings)
