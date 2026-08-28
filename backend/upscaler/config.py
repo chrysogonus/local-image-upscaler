@@ -44,6 +44,10 @@ class AppConfig:
     max_upload_bytes: int = 100 * 1024 * 1024
     max_input_pixels: int = 120_000_000
     max_jobs: int = 1
+    # How many jobs may be held at once, running and waiting together. max_jobs
+    # bounds only what executes; without this the queue behind it is unbounded,
+    # and every waiting job has already written its upload to disk.
+    max_queued_jobs: int = 8
     job_retention_seconds: int = 60 * 60
     realesrgan_binary: Path | None = None
     hardware_policy: Literal["safe", "off"] = "safe"
@@ -71,6 +75,7 @@ def load_config() -> AppConfig:
         max_upload_bytes=_env_int("UPSCALER_MAX_UPLOAD_BYTES", 100 * 1024 * 1024),
         max_input_pixels=_env_int("UPSCALER_MAX_INPUT_PIXELS", 120_000_000),
         max_jobs=max(1, _env_int("UPSCALER_MAX_JOBS", 1)),
+        max_queued_jobs=max(1, _env_int("UPSCALER_MAX_QUEUED_JOBS", 8)),
         job_retention_seconds=max(60, _env_int("UPSCALER_JOB_RETENTION_SECONDS", 3600)),
         realesrgan_binary=Path(binary).expanduser().resolve() if binary else None,
         hardware_policy=_env_choice(  # type: ignore[arg-type]

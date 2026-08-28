@@ -102,7 +102,11 @@ The versioned API provides:
 - `GET /api/v1/jobs/{id}/result`
 - `DELETE /api/v1/jobs/{id}`
 
-Interactive local API documentation is available at `/api/docs`.
+The complete OpenAPI schema is served locally at `GET /api/v1/openapi.json`. There is no
+bundled Swagger UI or ReDoc page: both load their assets from a third-party CDN, which
+would make the browser call out to one and would leave the page blank on an offline
+machine. Point any local schema viewer at that URL instead.
+
 `GET /api/v1/capabilities` includes backend and ComfyUI hardware reports, per-choice resource
 requirements, safe target/tile choices, the full diagnostic mode list, actionable workflows,
 and exclusion reasons. Completed results include the concrete `resolved_tile_size`.

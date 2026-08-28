@@ -5,7 +5,9 @@ services:
     image: local-image-upscaler:cuda
     build:
       args:
-        RUNTIME_IMAGE: nvidia/cuda:13.0.1-runtime-ubuntu24.04@sha256:c3fde347d52d578c84fd644bc177bc7ec333feaf11550d990da4084d7612e4c7
+        # Names the Dockerfile's digest-pinned CUDA stage rather than repeating
+        # the digest, which would drift from it. See the cuda-runtime stage.
+        RUNTIME_IMAGE: cuda-runtime
         UPSCALER_EXTRAS: ${UPSCALER_EXTRAS-swinir}
     environment:
       UPSCALER_FETCH_REALESRGAN: ${UPSCALER_FETCH_REALESRGAN:-1}

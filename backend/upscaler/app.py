@@ -45,7 +45,14 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     app = FastAPI(
         title="Local Image Upscaler",
         version=__version__,
-        docs_url="/api/docs",
+        # The schema is served locally; the interactive pages are not served at
+        # all. FastAPI's bundled Swagger UI and ReDoc load their JavaScript and
+        # CSS from cdn.jsdelivr.net, so opening one would make the user's
+        # browser call a third party — the one thing this application promises
+        # it does not do — and would render blank on an offline machine. The
+        # schema itself is complete, local, and what the page was reading.
+        openapi_url="/api/v1/openapi.json",
+        docs_url=None,
         redoc_url=None,
         lifespan=lifespan,
     )

@@ -78,7 +78,7 @@ through 3.14 are tested in CI.
 `uv.lock` and `frontend/pnpm-lock.yaml` are committed and the dependency audits
 (`pip-audit`, `pnpm audit`) are gates in `make ci-local`, so a known-vulnerable
 dependency should fail CI before it reaches you. Dependabot opens weekly updates
-for pip, npm, GitHub Actions, and Docker.
+for uv, npm, GitHub Actions, and Docker.
 
 ## Hardening already in place
 

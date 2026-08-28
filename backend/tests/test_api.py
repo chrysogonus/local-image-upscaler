@@ -46,7 +46,10 @@ async def wait_for_removal(client: httpx.AsyncClient, job_id: str) -> None:
 def app_client(config: AppConfig):
     app = create_app(config)
     transport = httpx.ASGITransport(app=app)
-    return app, httpx.AsyncClient(transport=transport, base_url="http://testserver")
+    # Addressed as loopback rather than httpx's "testserver" convention: the
+    # host allowlist is a security boundary, so the suite exercises it with a
+    # name a real deployment actually uses.
+    return app, httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1")
 
 
 @pytest.mark.asyncio
@@ -236,12 +239,64 @@ async def test_live_memory_admission_returns_409_and_cleans_upload(tmp_path: Pat
 
 
 @pytest.mark.asyncio
-async def test_rejects_non_local_host(tmp_path: Path):
+@pytest.mark.parametrize(
+    "host",
+    [
+        # The ASGI test-client convention. It was once in the allowlist and is
+        # not a name any deployment binds, so it must be refused like any other.
+        "testserver",
+        # The classic DNS-rebinding suffix: a name an attacker controls that
+        # merely starts with a loopback address.
+        "127.0.0.1.attacker.example",
+        "localhost.attacker.example",
+        # And the reverse, in case the check is ever loosened to a substring.
+        "attacker.example",
+    ],
+)
+async def test_rejects_every_host_that_is_not_loopback(tmp_path: Path, host: str):
     config = AppConfig(work_root=tmp_path / "jobs")
     app, client = app_client(config)
     async with app.router.lifespan_context(app), client:
-        response = await client.get("/api/v1/health", headers={"host": "attacker.example"})
-        assert response.status_code == 421
+        response = await client.get("/api/v1/health", headers={"host": host})
+        assert response.status_code == 421, f"{host} was accepted as a local host"
+
+
+@pytest.mark.asyncio
+async def test_accepts_a_state_change_that_carries_no_origin(tmp_path: Path):
+    """The absent-Origin branch, pinned so it is a decision rather than a gap.
+
+    A browser always attaches Origin to a cross-origin POST, so no header means
+    a local non-browser client, which SECURITY.md places outside the trust
+    boundary. Requiring it would break every local API client and close nothing.
+    """
+    config = AppConfig(work_root=tmp_path / "jobs")
+    app, client = app_client(config)
+    async with app.router.lifespan_context(app), client:
+        response = await client.post(
+            "/api/v1/jobs",
+            files={"file": ("small.png", png_bytes(), "image/png")},
+        )
+
+        assert response.status_code == 202
+
+
+@pytest.mark.asyncio
+async def test_serves_the_schema_locally_and_no_cdn_backed_documentation(tmp_path: Path):
+    """FastAPI's Swagger UI and ReDoc pages load from cdn.jsdelivr.net.
+
+    Serving either would make the browser call a third party and would render
+    blank offline, so neither is mounted. The schema they read is local and
+    stays available.
+    """
+    config = AppConfig(work_root=tmp_path / "jobs")
+    app, client = app_client(config)
+    async with app.router.lifespan_context(app), client:
+        schema = await client.get("/api/v1/openapi.json")
+        assert schema.status_code == 200
+        assert "/api/v1/jobs" in schema.json()["paths"]
+
+        for path in ("/api/docs", "/docs", "/redoc"):
+            assert (await client.get(path)).status_code == 404, f"{path} is still served"
 
 
 @pytest.mark.asyncio
@@ -418,6 +473,77 @@ async def test_jobs_are_queued_to_the_configured_concurrency_limit(
         assert (await wait_for_terminal(client, first.json()["id"]))["state"] == "completed"
         assert (await wait_for_terminal(client, second_id))["state"] == "completed"
         assert second_started.is_set()
+
+
+@pytest.mark.asyncio
+async def test_queue_depth_is_bounded_and_refuses_before_writing_anything(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """max_jobs bounds what runs; max_queued_jobs bounds what waits behind it.
+
+    Without the second bound the queue grows without limit, and because the
+    upload is streamed to disk during ``create`` every waiting job has already
+    spent up to max_upload_bytes of the work root. The refusal therefore has to
+    happen before the workspace is made, not after the bytes land.
+    """
+    first_started = threading.Event()
+    first_release = threading.Event()
+    process_image = job_manager_module.process_image
+
+    def controlled_processing(*args, **kwargs):
+        if args[3] == "first.png":
+            first_started.set()
+            if not first_release.wait(timeout=3):
+                raise AssertionError("first job was never released")
+        return process_image(*args, **kwargs)
+
+    monkeypatch.setattr(job_manager_module, "process_image", controlled_processing)
+    config = AppConfig(
+        work_root=tmp_path / "jobs",
+        max_input_pixels=1_000_000,
+        max_jobs=1,
+        max_queued_jobs=2,
+    )
+    app, client = app_client(config)
+    async with app.router.lifespan_context(app), client:
+        first = await client.post(
+            "/api/v1/jobs",
+            files={"file": ("first.png", png_bytes(), "image/png")},
+            data={"target_edge": "256"},
+        )
+        assert first.status_code == 202
+        assert await asyncio.to_thread(first_started.wait, 2)
+
+        second = await client.post(
+            "/api/v1/jobs",
+            files={"file": ("second.png", png_bytes(), "image/png")},
+            data={"target_edge": "256"},
+        )
+        assert second.status_code == 202
+
+        third = await client.post(
+            "/api/v1/jobs",
+            files={"file": ("third.png", png_bytes(), "image/png")},
+            data={"target_edge": "256"},
+        )
+        assert third.status_code == 429
+        assert "limit" in third.json()["detail"]
+        # The refused submission left nothing behind: one workspace for the
+        # running job, one for the queued job, and none for the third.
+        assert len(list(config.work_root.iterdir())) == 2
+
+        first_release.set()
+        assert (await wait_for_terminal(client, first.json()["id"]))["state"] == "completed"
+        assert (await wait_for_terminal(client, second.json()["id"]))["state"] == "completed"
+
+        # A finished job no longer occupies a slot, so submission resumes.
+        fourth = await client.post(
+            "/api/v1/jobs",
+            files={"file": ("fourth.png", png_bytes(), "image/png")},
+            data={"target_edge": "256"},
+        )
+        assert fourth.status_code == 202
+        assert (await wait_for_terminal(client, fourth.json()["id"]))["state"] == "completed"
 
 
 @pytest.mark.asyncio

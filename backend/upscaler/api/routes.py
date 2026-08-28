@@ -12,7 +12,7 @@ from starlette.background import BackgroundTask
 
 from upscaler import __version__
 from upscaler.devices import platform_capabilities
-from upscaler.jobs import JobManager
+from upscaler.jobs import JobManager, JobQueueFull
 from upscaler.resource_policy import POLICY_VERSION, HardwarePolicyError
 from upscaler.schemas import (
     TERMINAL_STATES,
@@ -83,6 +83,8 @@ async def create_job(
             workflow=workflow or None,
         )
         return await _manager(request).create(file, settings)
+    except JobQueueFull as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
     except HardwarePolicyError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except (ValueError, ValidationError) as exc:
