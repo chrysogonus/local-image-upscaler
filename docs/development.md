@@ -16,25 +16,39 @@ make dev-frontend
 
 Open `http://127.0.0.1:5173`. Vite proxies local API requests to the backend on port 8000.
 
-To build the frontend and run the combined local application:
+These need the host toolchain from `make setup`: `uv`, pnpm 10.34.5, Python 3.10 or newer,
+and Node.js 22.13 or newer. That toolchain exists for development and the verification
+gates below — the app itself is deployed only as the container described in
+[Deployment](deployment.md), and `make up` is the way to run the combined application.
+
+A host checkout installs no neural engine, so **Upscale** resolves to the deterministic
+resampler there. Add one when you need to exercise it locally, matching the wheel index to
+your driver's CUDA version (`nvidia-smi`, top right):
 
 ```bash
-make run
+uv sync --extra dev --extra swinir --index https://download.pytorch.org/whl/cu130
+uv run python scripts/install-weights.py --group swinir
+uv run python scripts/install-weights.py --group realesrgan
 ```
 
-Then open `http://127.0.0.1:8000`.
+The weight files are checksum-pinned in `models/manifest.json` and the install is discarded
+on mismatch. Upstream publishes no digest of its own, so it was computed from the official
+release download — it protects against corruption and later tampering, not against a
+compromised original release. Adding a new weight entry starts with `"sha256": null`; the
+installer then refuses it and prints the digest, which you pin with
+`uv run python scripts/install-weights.py --group <group> --pin`.
 
 ## Erasing what a session leaves behind
 
 ```bash
-make clean-data COMFYUI=/path/to/ComfyUI          # report, then ask before deleting
-make clean-data-force COMFYUI=/path/to/ComfyUI    # same without the prompt, for scripts
+make clean-data          # report, then ask before deleting
+make clean-data-force    # same without the prompt, for scripts
 ```
 
-`COMFYUI` is how the cleanup finds your ComfyUI. The variables the app reads
-(`UPSCALER_COMFYUI_ROOT`, `UPSCALER_COMFYUI_INPUT_DIR`) are set on the command that
-launches the app, so a shell running `make` does not normally carry them; without either,
-the ComfyUI half is **skipped and says so** rather than reporting a clean it did not do.
+The ComfyUI half uses whatever `make setup-comfyui` recorded, so it normally needs no
+argument. `make clean-data COMFYUI=/path/to/ComfyUI` points it at an installation this
+project never set up; with neither a record nor an override, that half is **skipped and
+says so** rather than reporting a clean it did not do.
 
 Both refuse to run while the app is serving, so nothing is deleted from under a live job,
 and `--dry-run` reports without touching anything. What goes:
@@ -42,7 +56,6 @@ and `--dry-run` reports without touching anything. What goes:
 - every per-job workspace under the work root (`UPSCALER_WORK_ROOT`, otherwise
   `/tmp/local-image-upscaler`) — the retention sweep only knows about jobs the running
   process created, so directories left by an earlier process are otherwise permanent;
-- the ComfyUI connector's `.upscaler/comfyui-container-work/` bind-mounted workspaces;
 - the `upscaler_work` Docker volume, which `make down` deliberately keeps;
 - ComfyUI's `input/`, `output/` and `temp/` directories, its saved workflows under
   `user/default/workflows/`, and its run history and queue.
@@ -107,18 +120,19 @@ the comprehensive local-CI command. The artifact checks can also be run directly
 
 ```bash
 make package         # build, inspect, install, and import the wheel in isolation
-make compose-config  # resolve and validate the Compose configuration
+make compose-config  # resolve and validate both Compose resolutions
 ```
 
 GitHub Actions runs the same local CI contract for every pull request and every
 push to `main`. Backend checks run against both the minimum supported Python
 (3.10) and Python 3.14; frontend checks use Node.js 22 and pnpm 10.34.5. Every change also
-validates the CPU, CUDA, and ComfyUI Compose configurations, builds the complete CPU image,
+validates both Compose resolutions, builds the release image, imports its neural stack,
 checks its licences and non-root user, starts it, serves the frontend, and completes a real
-upload/job/download lifecycle. A weekly scheduled job (or a manual run with `extended`
-selected) additionally builds the multi-gigabyte CUDA image, imports its neural stack,
-downloads the checksum-pinned NCNN/Vulkan runtime, and performs real inference through it
-using software Vulkan. Private/gated model downloads remain outside unattended CI.
+upload/job/download lifecycle — on a runner with no GPU, which is what keeps the resampler
+fallback honest. That build is multi-gigabyte, so it reuses a layer cache between runs. A
+weekly scheduled job (or a manual run with `extended` selected) additionally downloads the
+checksum-pinned NCNN/Vulkan runtime and performs real inference through it using software
+Vulkan. Private/gated model downloads remain outside unattended CI.
 Dependabot proposes weekly Python, frontend, Actions, and digest-pinned base-image updates;
 the same gates decide whether those updates are safe to merge.
 
@@ -137,10 +151,10 @@ a usable CUDA device; a standard run fails with an actionable preflight error in
 silently dropping a candidate.
 
 ```bash
-make setup-swinir
-make setup-model-swinir
-make setup-model-cuda                     # preferred Real-ESRGAN weights; torch is above
-# or: make setup-model                    # NCNN/Vulkan fallback
+uv sync --extra dev --extra swinir --index https://download.pytorch.org/whl/cu130
+uv run python scripts/install-weights.py --group swinir
+uv run python scripts/install-weights.py --group realesrgan   # preferred Real-ESRGAN weights
+# or: ./scripts/install-realesrgan-linux.sh                   # NCNN/Vulkan fallback
 ```
 
 Then prepare and run the benchmark:

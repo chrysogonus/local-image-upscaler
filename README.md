@@ -45,25 +45,30 @@ photographic. See [Modes](docs/reference.md#modes) for what each mode claims, an
 
 ## Quick start
 
-The default Docker image is CPU-safe: the complete web app, with no CUDA runtime,
-PyTorch, neural weights, or GPU reservation. Nothing is needed on the host but Docker.
+Docker is the only requirement, and there is one command:
 
 ```bash
 make up
 ```
 
-Then open `http://127.0.0.1:8000`. That is the deterministic **Upscale** and **Sharpen**
-path on any ordinary Docker host, and it downloads no model weights.
+Then open `http://127.0.0.1:8000`.
 
-For NVIDIA acceleration, the CUDA overlay adds the pinned PyTorch stack and SwinIR:
+One image serves every host. Where the NVIDIA Container Toolkit is installed it reserves
+the GPU and **Upscale** runs on SwinIR-L; where it is not, the same image starts without a
+device, and Upscale falls back to the deterministic resampler and says so. **Sharpen** is
+identical either way, and **Illustration** needs a ComfyUI you run yourself.
+
+**Illustration** mode runs on ComfyUI, which is a separate application. One command
+installs or adopts one and wires it in; after that it starts and stops with the app:
 
 ```bash
-make up-cuda
+make setup-comfyui
+make up      # starts ComfyUI, then the app connected to it
+make down    # stops both
 ```
 
-Running it on the host instead of in Docker, reaching it over SSH, or sizing it to your
-hardware are all covered in [Deployment](docs/deployment.md) and
-[Host installation](docs/install.md).
+Reaching the app over SSH, what that setup command actually does, and sizing the app to
+your hardware are covered in [Deployment](docs/deployment.md).
 
 ## What is implemented
 
@@ -78,10 +83,11 @@ hardware are all covered in [Deployment](docs/deployment.md) and
   scale it genuinely produces.
 - EXIF orientation, ICC-to-sRGB normalization, and lossless alpha-preserving PNG output.
 - Multi-scale luminance-only finishing, sized to the enlargement and clamped against halos.
-- Always-available deterministic resampler plus optional Real-ESRGAN adapters: NCNN/Vulkan
-  (portable, x86-64) and PyTorch/CUDA (any CUDA GPU, including ARM64 hosts such as DGX Spark).
-- An optional ComfyUI engine that runs the checked-in illustration graph on a local
-  ComfyUI over its HTTP API, with measured progress, cancellation, and no writes to
+- Always-available deterministic resampler plus Real-ESRGAN adapters: PyTorch/CUDA (any
+  CUDA GPU, including ARM64 hosts such as DGX Spark) and NCNN/Vulkan for a separately
+  provided binary.
+- An optional ComfyUI engine that runs the checked-in illustration graph on a ComfyUI you
+  run yourself, over its HTTP API, with measured progress, cancellation, and no writes to
   ComfyUI's output directory.
 - Per-mode capability reporting; a mode that cannot run says why instead of quietly
   producing something weaker.
@@ -106,10 +112,9 @@ enlargement factors every engine actually produces, and the local API.
 
 | Page | What is in it |
 | --- | --- |
-| [Deployment](docs/deployment.md) | Docker CPU and CUDA images, the hardware-aware policy and its memory floors, and reaching the app over SSH. |
-| [Host installation](docs/install.md) | Requirements, `make setup`, the transformer engine, CUDA GPUs including ARM64, and the illustration model. |
-| [Reference](docs/reference.md) | Modes, finishing, engine scales, the local API, and current limitations. |
-| [Development](docs/development.md) | Dev servers, erasing what a session leaves on disk, the verification gates, and the perceptual-quality benchmark. |
+| [Deployment](docs/deployment.md) | The one image and how the GPU is decided, Illustration through your own ComfyUI, the hardware-aware policy and its memory floors, and reaching the app over SSH. |
+| [Reference](docs/reference.md) | Modes, finishing, engine scales and why SwinIR-L, the local API, and current limitations. |
+| [Development](docs/development.md) | Dev servers and the host toolchain, erasing what a session leaves on disk, the verification gates, and the perceptual-quality benchmark. |
 
 ## Privacy and safety
 
@@ -142,22 +147,26 @@ The wheel embeds both `LICENSE` and `NOTICE`, and the container exposes the same
 operating-system packages retain their own upstream terms; the project licence does not
 replace them.
 
-**No model weights are distributed here.** Every checkpoint and runtime is downloaded
-from its original publisher by a `make setup-model-*` target and stays under its own
-licence. [`models/manifest.json`](models/manifest.json) is the authoritative record: it
-carries the publisher, homepage, pinned URL or revision, SHA-256 checksum, and licence
-for each one.
+**No model weights are distributed here.** Every checkpoint is downloaded from its
+original publisher against a pinned checksum and stays under its own licence.
+[`models/manifest.json`](models/manifest.json) is the authoritative record: it carries the
+publisher, homepage, pinned URL or revision, SHA-256 checksum, and licence for each one.
 
 | Component | Installed by | Licence | Commercial use |
 | --- | --- | --- | --- |
-| Real-ESRGAN NCNN/Vulkan runtime | `make setup-model` | MIT | Yes |
-| RealESRGAN_x4plus | `make setup-model-cuda` | BSD-3-Clause | Yes |
-| RealESRGAN x4plus anime 6B | `make setup-model-comfyui-illustration` | BSD-3-Clause | Yes |
-| SwinIR-L real-world x4 GAN | `make setup-model-swinir` | Apache-2.0 | Yes |
+| RealESRGAN_x4plus | The container, on first start | BSD-3-Clause | Yes |
+| SwinIR-L real-world x4 GAN | The container, on first start | Apache-2.0 | Yes |
+| RealESRGAN x4plus anime 6B | `make setup-comfyui`, into that ComfyUI | BSD-3-Clause | Yes |
+| ComfyUI itself | `make setup-comfyui`, cloned onto your machine | GPL-3.0-only | Yes |
+| Real-ESRGAN NCNN/Vulkan runtime | `scripts/install-realesrgan-linux.sh`; not in the image | MIT | Yes |
 
 Every weight this project installs is permissively licensed and usable commercially. That
 is deliberate: a model whose licence forbids commercial use would have to be labelled
 wherever its output appeared, and none is needed for reconstruction.
+
+ComfyUI is the one entry that is copyleft rather than permissive. That changes nothing for
+this repository: `make setup-comfyui` clones it onto your machine, where its terms cover
+that checkout, and nothing from it is distributed here or linked into this code.
 
 The ComfyUI engine runs its graph against a model installed in *your* ComfyUI. The pinned
 illustration weight above is the only one it needs; anything else in that installation is

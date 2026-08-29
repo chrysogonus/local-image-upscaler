@@ -52,16 +52,23 @@ Model weights and optional runtimes
 ================================================================================
 
 No model weights, runtime binaries, or trained checkpoints are distributed in
-this repository. They are downloaded from their original publishers by the
-`make setup-model-*` targets, and each remains under its own licence.
+this repository. They are downloaded from their original publishers - by the
+container on first start, or by `make setup-comfyui` for the one that belongs to
+a separate application - and each remains under its own licence.
 
 models/manifest.json is the authoritative record: every entry carries the
 publisher, homepage, pinned URL or revision, SHA-256 checksum, and licence.
 
-Every entry installed today is permissively licensed and usable commercially:
-MIT for the NCNN/Vulkan runtime, BSD-3-Clause for the Real-ESRGAN weights, and
-Apache-2.0 for SwinIR-L. None carries a noncommercial restriction. See the
-Licensing section of README.md for the summary.
+Every entry is usable commercially. None carries a noncommercial restriction.
+The weights are permissively licensed: MIT for the NCNN/Vulkan runtime,
+BSD-3-Clause for the Real-ESRGAN weights, and Apache-2.0 for SwinIR-L.
+
+One entry is copyleft rather than permissive: ComfyUI, GPL-3.0-only, which
+`make setup-comfyui` clones onto the user's machine so the Illustration mode has
+something to drive. Its terms cover that checkout. Nothing from it is
+redistributed here, vendored into this tree, or linked into this code, and the
+application talks to it over a local HTTP and websocket API as a separate
+process. See the Licensing section of README.md for the summary.
 
 Should a weight whose licence forbids commercial use ever be added, it will get
 its own install target and Python extra so that enabling it is a deliberate act,

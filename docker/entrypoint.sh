@@ -10,19 +10,29 @@
 # resampler, which is better than refusing to start.
 set -eu
 
-# A pre-release image ran as root, so an existing development volume may still
-# have root-only ownership. Fail with the exact one-time migration instead of
-# starting privileged or failing later while an upload is in progress.
+# The image creates /weights and /work mode 1777 so that any container uid can
+# use them, because driving a ComfyUI on the host runs this as the host user. A
+# volume created by an older image keeps its old mode, and so does one written
+# while the container ran as a different uid. Fail with the one-time repair
+# instead of starting privileged or failing later mid-upload.
+#
+# The repair goes through a shell deliberately: `--entrypoint chmod` with the
+# arguments after the service name looks equivalent, but Compose drops them and
+# the command exits zero having changed nothing.
 require_writable_dir() {
     data_dir="$1"
     if [ ! -d "${data_dir}" ] || [ ! -w "${data_dir}" ]; then
         echo "entrypoint: ${data_dir} must be writable by container uid $(id -u)" >&2
-        if [ "$(id -u)" = "10001" ]; then
-            echo "entrypoint: migrate old Compose volumes with:" >&2
-            echo "  docker compose run --rm --user root --entrypoint chown upscaler -R 10001:10001 /weights /work" >&2
-        else
-            echo "entrypoint: check the owner of the configured bind-mounted work directory" >&2
-        fi
+        case "${data_dir}" in
+            /weights|/work)
+                echo "entrypoint: repair the volume once with:" >&2
+                echo "  docker compose run --rm --user root --entrypoint sh upscaler \\" >&2
+                echo "    -c 'chmod 1777 /weights /work'" >&2
+                ;;
+            *)
+                echo "entrypoint: check the owner of the configured bind-mounted directory" >&2
+                ;;
+        esac
         exit 70
     fi
 }

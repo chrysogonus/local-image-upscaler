@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-image="${1:-local-image-upscaler:cpu}"
+image="${1:-local-image-upscaler}"
 container="upscaler-release-smoke-${RANDOM}"
 temporary="$(mktemp -d -t upscaler-container-smoke.XXXXXX)"
 
@@ -23,8 +23,15 @@ docker run --rm --entrypoint sh "${image}" -c '
   test "$(id -u)" = 10001
   test -r /usr/share/licenses/local-image-upscaler/LICENSE
   test -r /usr/share/licenses/local-image-upscaler/NOTICE
-  ! python3 -c "import torch" >/dev/null 2>&1
 '
+
+# One image serves every host, so the neural stack is present unconditionally
+# and the CUDA build is what a GPU host reserves a device for. This runner has
+# no GPU: the engines below will probe, find none, and the job further down
+# still has to succeed on the resampler. That fallback is the whole reason a
+# single image is safe to ship.
+docker run --rm --entrypoint python3 "${image}" \
+  -c 'import spandrel, torch, torchvision, websockets; assert torch.version.cuda'
 
 docker run --detach --name "${container}" \
   --mount type=volume,destination=/weights \

@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "runtimes": [
     {
       "id": "realesrgan-ncnn-vulkan-linux-x64",
@@ -68,5 +68,19 @@
       "notes": "Preferred Upscale engine: a transformer, which is what every NTIRE 2026 x4 winner is built on, and specifically the variant trained with the BSRGAN degradation pipeline. The classical SwinIR/HAT/DRCT checkpoints are trained on bicubic downsampling and sharpen compression artifacts on real photographs, so the benchmark leaders are deliberately not pinned here. Any other spandrel-loadable checkpoint can be substituted via UPSCALER_SR_MODEL. Upstream publishes no digest; sha256 was computed from the official release download and pinned here."
     }
   ],
-  "repositories": []
+  "repositories": [],
+  "applications": [
+    {
+      "id": "comfyui",
+      "group": "comfyui",
+      "name": "ComfyUI",
+      "repo_url": "https://github.com/comfyanonymous/ComfyUI.git",
+      "revision": "8583b0ce0a813c6215e2c304d08bf597e2993c37",
+      "directory": "ComfyUI",
+      "torch_index": "https://download.pytorch.org/whl/cu130",
+      "license": "GPL-3.0-only",
+      "homepage": "https://github.com/comfyanonymous/ComfyUI",
+      "notes": "The separate application the Illustration mode drives. Cloned onto the user's machine by `make setup-comfyui` and never redistributed from this repository, so its copyleft terms cover that checkout rather than this tree. The revision is the commit this project has actually run against the pinned illustration model; it governs a fresh clone only, because adopting an existing installation must not move someone's working tree. torch_index matches the CUDA 13.0 runtime the app image is built on, since ComfyUI's own requirements.txt does not pin torch."
+    }
+  ]
 }

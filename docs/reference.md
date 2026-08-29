@@ -21,7 +21,7 @@ because every one of those was a way to make the result worse rather than better
   A local ComfyUI runs the dedicated Real-ESRGAN x4 anime model, then performs one exact
   resize and restores transparency. It does not use diffusion, prompts, face generation,
   padding, or cropping, so the source composition and aspect ratio stay fixed. See
-  [Illustration upscaling through ComfyUI](install.md#illustration-upscaling-through-comfyui).
+  [Illustration mode](deployment.md#illustration-mode).
 - **Sharpen** — keeps the oriented source width and height exactly, bypasses model inference
   and resizing, and improves existing edge contrast on the CPU. It does not claim to add
   detail or resolution.
@@ -89,6 +89,43 @@ rather than to the file it was handed.
 
 If a source already exceeds the target, neural enlargement is skipped unless **Restore
 before reducing** is enabled.
+
+### Why SwinIR-L, and how to use a different checkpoint
+
+Real-ESRGAN's generator is a 2018 convolutional network, and every winning entry in the
+NTIRE 2026 ×4 challenge is built on a transformer instead, which is why **Upscale** prefers
+one when a CUDA device is available.
+
+The pinned weight is SwinIR-L trained with the **BSRGAN degradation pipeline**, and that
+qualifier is the whole reason for the choice. The headline checkpoints — HAT-L, DRCT-L,
+classical SwinIR — are trained on bicubic downsampling only. Fed a real photograph, whose
+softness comes from compression and resampling rather than clean bicubic, they sharpen the
+artifacts along with the detail and land *behind* Real-ESRGAN on the images this
+application actually receives. Picking an architecture because it tops a benchmark, while
+ignoring what it was trained to invert, is the trap [`AGENTS.md`](../AGENTS.md) warns about.
+
+`spandrel` also recognises HAT, DAT, DRCT, ATD, SPAN, RGT and PLKSR, so any other
+checkpoint is a file rather than a code change. Mount it into the container and name it:
+
+```bash
+UPSCALER_SR_MODEL=/weights/spandrel-sr/4xNomos8kSCHAT-L.pth
+```
+
+The model's own architecture and scale are read from the checkpoint and recorded in the job
+result. If the engine is absent, Upscale falls back to Real-ESRGAN and then to the
+resampler, saying so each time.
+
+Availability is confirmed by running a real convolution, because on a recent architecture
+`torch.cuda.is_available()` can return true while the first kernel launch fails. The engine
+reports itself unavailable — with a specific reason — if torch is missing, if no CUDA device
+initialises, or if the installed wheel lacks kernels for the GPU. Precision defaults to
+bfloat16 where supported and float32 otherwise; override with
+`UPSCALER_CUDA_PRECISION=fp32|bf16|fp16`.
+
+The published image pairs the CUDA 13.0 base with the CUDA 13 package set pinned in
+`uv.lock`, and is intentionally not retargetable by an environment variable. A host whose
+driver needs a different CUDA runtime has to change that pinned pair in the Dockerfile and
+lockfile together.
 
 ## Local API
 

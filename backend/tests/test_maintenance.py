@@ -148,22 +148,6 @@ def test_the_weights_volume_is_never_a_target(tmp_path, monkeypatch):
     assert maintenance.DOCKER_JOB_VOLUME == "upscaler_work"
 
 
-def test_the_configured_comfyui_container_workdir_is_collected(tmp_path, monkeypatch):
-    work_root = tmp_path / "work"
-    comfyui_work_root = tmp_path / "comfyui-container-work"
-    work_root.mkdir()
-    comfyui_work_root.mkdir()
-    _job_workspace(comfyui_work_root, "cccccccc-2222")
-    monkeypatch.setenv("UPSCALER_WORK_ROOT", str(work_root))
-    monkeypatch.setenv("UPSCALER_COMFYUI_WORK_ROOT", str(comfyui_work_root))
-
-    targets = collect(include_docker=False)
-
-    assert [target.label for target in targets] == ["ComfyUI container workspaces"]
-    assert targets[0].files == 2
-    assert targets[0].size == 300
-
-
 def test_the_running_app_is_detected_on_its_configured_port(monkeypatch):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
@@ -194,6 +178,38 @@ def test_an_unreachable_comfyui_is_reported_rather_than_failing(monkeypatch):
     problems = remove([Target(label="state", detail="u", endpoint="http://127.0.0.1:8188")])
     assert len(problems) == 1
     assert "already gone if it is not running" in problems[0]
+
+
+@pytest.fixture(autouse=True)
+def _no_recorded_install(tmp_path_factory, monkeypatch):
+    """Keep these tests off whatever `make setup-comfyui` recorded on this machine.
+
+    comfyui_root() falls back to that record, so without this a developer who has
+    run the setup gets different results from one who has not.
+    """
+    monkeypatch.setattr(
+        maintenance, "COMFYUI_RECORD", tmp_path_factory.mktemp("norecord") / "comfyui.conf"
+    )
+
+
+def test_the_recorded_installation_is_used_when_nothing_else_names_one(tmp_path, monkeypatch):
+    """`make setup-comfyui` chose a path once; no later command should ask again."""
+    monkeypatch.delenv("UPSCALER_COMFYUI_ROOT", raising=False)
+    monkeypatch.delenv("UPSCALER_COMFYUI_INPUT_DIR", raising=False)
+    root = _comfyui(tmp_path / "ComfyUI")
+    record = tmp_path / "comfyui.conf"
+    record.write_text(f"COMFYUI_ROOT={root}\nCOMFYUI_PORT=8188\n", encoding="utf-8")
+    monkeypatch.setattr(maintenance, "COMFYUI_RECORD", record)
+
+    assert comfyui_root() == root
+
+    # An explicit path is for an installation this project never recorded.
+    other = _comfyui(tmp_path / "Other")
+    assert comfyui_root(str(other)) == other
+
+    # A record naming a directory that has since gone is not a usable answer.
+    record.write_text(f"COMFYUI_ROOT={tmp_path / 'gone'}\n", encoding="utf-8")
+    assert comfyui_root() is None
 
 
 def test_an_explicit_path_beats_an_environment_that_names_nothing(tmp_path, monkeypatch):

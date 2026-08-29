@@ -1,0 +1,16 @@
+# The GPU reservation, and nothing else.
+#
+# This is the one part of the deployment that cannot live in docker-compose.yml:
+# Compose has no conditional for a device reservation, and a static one fails
+# with "could not select device driver" on every host without the NVIDIA
+# container runtime. scripts/compose.sh adds this file when the runtime is
+# present, so `make up` remains the only command either way.
+services:
+  upscaler:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

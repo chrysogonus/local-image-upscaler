@@ -77,9 +77,12 @@ jobs:
         run: make ci-local GATES=frontend
 
   container-release:
-    name: CPU release container
+    name: Release container
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    # The one image carries the CUDA base and the torch stack, so this is a
+    # heavier build than the former CPU-only one. The layer cache below is what
+    # keeps an ordinary pull request from paying the full cost.
+    timeout-minutes: 90
 
     steps:
       - name: Check out repository
@@ -87,14 +90,23 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate CPU, CUDA, and ComfyUI Compose configurations
+      - name: Validate both Compose resolutions
         run: make compose-config
 
-      - name: Build the default release image
-        run: docker build --tag local-image-upscaler:cpu .
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Build the release image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          load: true
+          tags: local-image-upscaler
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Inspect and exercise the complete image
-        run: scripts/container-smoke.sh local-image-upscaler:cpu
+        run: scripts/container-smoke.sh local-image-upscaler
 
   runtime-smoke:
     name: Optional NCNN runtime smoke
@@ -124,37 +136,9 @@ jobs:
           uv sync --extra dev --locked
 
       - name: Install checksum-pinned NCNN runtime
-        run: make setup-model
+        run: ./scripts/install-realesrgan-linux.sh
 
       - name: Run real inference smoke test
         run: |
           uv run python -c 'from upscaler.models.realesrgan_ncnn import RealEsrganNcnnAdapter; assert RealEsrganNcnnAdapter().available'
           uv run pytest backend/tests/test_realesrgan_integration.py -rs
-
-  cuda-container-build:
-    name: CUDA release image build
-    if: github.event_name == 'schedule' || inputs.extended == true
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      # RUNTIME_IMAGE names the Dockerfile's digest-pinned cuda-runtime stage.
-      # Restating the digest here is what let it drift from the Compose overlay.
-      - name: Build the locked CUDA image without gated weights
-        run: >-
-          docker build
-          --build-arg RUNTIME_IMAGE=cuda-runtime
-          --build-arg UPSCALER_EXTRAS=swinir
-          --tag local-image-upscaler:cuda-ci
-          .
-
-      - name: Verify the CUDA runtime and neural packages are present
-        run: |
-          docker run --rm --entrypoint python3 local-image-upscaler:cuda-ci \
-            -c 'import cv2, spandrel, torch, torchvision; assert torch.version.cuda'
-          test "$(docker image inspect --format '{{.Config.User}}' local-image-upscaler:cuda-ci)" = "10001:10001"
