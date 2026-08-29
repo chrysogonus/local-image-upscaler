@@ -101,7 +101,8 @@ class SpandrelSrAdapter:
         except ImportError:
             return (
                 "spandrel is not installed; it supplies the transformer architectures. "
-                "Run `make setup-swinir`."
+                "The released image carries it; a host checkout needs "
+                "`uv sync --extra swinir`."
             )
         return None
 
@@ -122,7 +123,8 @@ class SpandrelSrAdapter:
         if not path.is_file():
             return (
                 f"The transformer runtime is ready but {path.name} is missing. "
-                "Run `make setup-model-swinir` to download the weights."
+                "The container downloads it on first start with "
+                "UPSCALER_FETCH_SWINIR=1; check the startup log for a failed download."
             )
         return None
 

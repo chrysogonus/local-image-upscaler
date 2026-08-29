@@ -66,7 +66,7 @@ def test_missing_weights_are_distinguished_from_a_missing_runtime(
 
     reason = adapter.unavailable_reason
     assert adapter.available is False
-    assert reason is not None and "setup-model-swinir" in reason
+    assert reason is not None and "UPSCALER_FETCH_SWINIR" in reason
 
     (tmp_path / WEIGHTS_FILENAME).write_bytes(b"stub")
     assert adapter.available is True

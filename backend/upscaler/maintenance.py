@@ -140,14 +140,40 @@ def app_is_running() -> bool:
         return probe.connect_ex((host, port)) == 0
 
 
+COMFYUI_RECORD = Path(__file__).resolve().parents[2] / ".upscaler" / "comfyui.conf"
+
+
+def recorded_comfyui_root() -> str:
+    """The installation `make setup-comfyui` chose, if this is a source checkout.
+
+    A KEY=value file rather than JSON because comfyui-service.sh reads the same
+    one from POSIX shell. Absent in the container, where nothing set it up.
+    """
+    try:
+        text = COMFYUI_RECORD.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    for line in text.splitlines():
+        key, separator, value = line.partition("=")
+        if separator and key.strip() == "COMFYUI_ROOT":
+            return value.strip()
+    return ""
+
+
 def comfyui_root(override: str | None = None) -> Path | None:
     """Where ComfyUI is installed.
 
     The adapter's own variables are set on the command that launches the app, so
-    a shell running `make clean-data` usually carries none of them. The explicit
-    override exists so the cleanup does not depend on inheriting them.
+    a shell running `make clean-data` usually carries none of them. It falls back
+    to the installation `make setup-comfyui` recorded, which is why the ordinary
+    case needs no argument at all; the explicit override still wins, for an
+    installation this project never set up.
     """
-    configured = (override or "").strip() or os.getenv("UPSCALER_COMFYUI_ROOT", "").strip()
+    configured = (
+        (override or "").strip()
+        or os.getenv("UPSCALER_COMFYUI_ROOT", "").strip()
+        or recorded_comfyui_root()
+    )
     if configured:
         root = Path(configured).expanduser().resolve()
     else:
@@ -160,9 +186,11 @@ def comfyui_root(override: str | None = None) -> Path | None:
 
 NO_COMFYUI_NOTICE = (
     "ComfyUI was NOT cleaned: no installation is configured, so its input, output,\n"
-    "temp, saved workflows, history and queue were all left alone. Point at it with\n"
+    "temp, saved workflows, history and queue were all left alone. Run\n"
+    "  make setup-comfyui\n"
+    "to record one, or point at a different installation with\n"
     "  make clean-data COMFYUI=/path/to/ComfyUI\n"
-    "or export UPSCALER_COMFYUI_ROOT. Its temp directory is also emptied whenever\n"
+    "Its temp directory is also emptied whenever\n"
     "ComfyUI itself restarts."
 )
 
@@ -249,20 +277,6 @@ def collect(*, include_docker: bool = True, root: Path | None = None) -> list[Ta
     workspaces = collect_workspaces(load_config().work_root)
     if workspaces:
         targets.append(workspaces)
-
-    comfyui_work_root = os.getenv("UPSCALER_COMFYUI_WORK_ROOT", "").strip()
-    if comfyui_work_root:
-        comfyui_workspaces = collect_workspaces(Path(comfyui_work_root).expanduser())
-        if comfyui_workspaces:
-            targets.append(
-                Target(
-                    label="ComfyUI container workspaces",
-                    detail=comfyui_workspaces.detail,
-                    files=comfyui_workspaces.files,
-                    size=comfyui_workspaces.size,
-                    paths=comfyui_workspaces.paths,
-                )
-            )
 
     if root is not None:
         targets.extend(collect_comfyui(root))

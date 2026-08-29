@@ -132,7 +132,8 @@ class RealEsrganCudaAdapter:
         if missing:
             return (
                 f"CUDA is ready but {', '.join(missing)} is missing. "
-                "Run `make setup-model-cuda` to download the weights."
+                "The container downloads it on first start with "
+                "UPSCALER_FETCH_REALESRGAN=1; check the startup log for a failed download."
             )
         return None
 

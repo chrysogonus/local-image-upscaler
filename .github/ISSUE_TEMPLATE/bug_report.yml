@@ -38,10 +38,10 @@ body:
     attributes:
       label: How is it installed?
       options:
-        - Docker, CPU image (make up)
-        - Docker, CUDA overlay (make up-cuda)
-        - Docker, with ComfyUI (make up-comfyui)
-        - Host install (make run)
+        - Docker with a GPU reservation (make up on an NVIDIA host)
+        - Docker without a GPU (make up, or UPSCALER_GPU=0)
+        - Docker, pointed at your own ComfyUI (UPSCALER_COMFYUI_URL)
+        - A host checkout (make dev-backend)
         - Host install, development servers (make dev-backend / dev-frontend)
         - Other or not sure
     validations:

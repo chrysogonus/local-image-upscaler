@@ -41,7 +41,7 @@ vulnerability here.
   it claimed to erase.
 - **Supply chain.** A wrong or unverified checksum in `models/manifest.json`, a
   download path that accepts an unpinned artifact, or anything that would let a
-  `make setup-model-*` target install something other than what it names.
+  weight installer place something other than what it names.
 - **Leaks in logs.** Image contents or unnecessary identifying paths in log
   output.
 

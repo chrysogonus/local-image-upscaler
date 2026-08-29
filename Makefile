@@ -1,4 +1,4 @@
-.PHONY: setup setup-venv setup-frontend setup-browser setup-model setup-cuda setup-model-cuda setup-swinir setup-model-swinir setup-comfyui setup-model-comfyui-illustration up up-cuda up-comfyui down down-comfyui logs shell dev-backend dev-frontend build package compose-config test test-frontend test-e2e lint check ci-local run clean-data clean-data-force
+.PHONY: setup setup-venv setup-frontend setup-browser setup-comfyui setup-model-comfyui-illustration up down logs shell dev-backend dev-frontend build package compose-config test test-frontend test-e2e lint check ci-local clean-data clean-data-force
 
 setup: setup-venv setup-frontend
 
@@ -12,73 +12,50 @@ setup-frontend:
 setup-browser:
 	pnpm --dir frontend exec playwright install chromium
 
-setup-model:
-	./scripts/install-realesrgan-linux.sh
-
-# Override for a different CUDA runtime, e.g. UPSCALER_TORCH_INDEX=.../whl/cu128
-UPSCALER_TORCH_INDEX ?= https://download.pytorch.org/whl/cu130
-
-setup-cuda:
-	uv sync --extra dev --extra cuda --index "$(UPSCALER_TORCH_INDEX)"
-
-setup-model-cuda:
-	uv run python scripts/install-weights.py --group realesrgan
-
-# Transformer engine for Upscale. Needs the same torch as the CUDA engine plus
-# spandrel, which supplies the architecture.
-setup-swinir:
-	uv sync --extra dev --extra swinir --index "$(UPSCALER_TORCH_INDEX)"
-
-setup-model-swinir:
-	uv run python scripts/install-weights.py --group swinir
-
-# Drives the Illustration graph on your own ComfyUI. There is no
-# setup-model-comfyui: the weights belong to that installation.
+# Installs or adopts the ComfyUI that the Illustration mode drives, then records
+# where it is so `make up`, `make down` and `make clean-data` need no arguments.
+# An installation already on the machine is adopted rather than replaced;
+# COMFYUI_DIR picks a different location for a fresh clone.
 setup-comfyui:
-	uv sync --extra dev --extra comfyui
+	uv run python scripts/install-comfyui.py $(if $(COMFYUI_DIR),--dir "$(COMFYUI_DIR)")
 
-# Installs the faithful illustration model where the user's ComfyUI can load it.
-# Example: make setup-model-comfyui-illustration \
-#   UPSCALER_COMFYUI_UPSCALE_MODELS_DIR=/opt/ComfyUI/models/upscale_models
+# Reinstalls just the illustration weight into the recorded ComfyUI. Normally
+# covered by setup-comfyui; kept for repairing that one file on its own.
 setup-model-comfyui-illustration:
-	test -n "$(UPSCALER_COMFYUI_UPSCALE_MODELS_DIR)" || (echo "Set UPSCALER_COMFYUI_UPSCALE_MODELS_DIR to ComfyUI/models/upscale_models" >&2; exit 2)
-	uv run python scripts/install-weights.py --group comfyui-illustration --dir "$(UPSCALER_COMFYUI_UPSCALE_MODELS_DIR)"
+	uv run python scripts/install-weights.py --group comfyui-illustration \
+		--dir "$(or $(UPSCALER_COMFYUI_UPSCALE_MODELS_DIR),$(shell sed -n 's/^COMFYUI_ROOT=//p' .upscaler/comfyui.conf 2>/dev/null)/models/upscale_models)"
 
+# One command for the whole deployment: the ComfyUI the Illustration mode needs,
+# then the app wired to it. scripts/compose.sh adds the GPU reservation when the
+# host can actually satisfy one.
+#
+# ComfyUI is checked first and is never allowed to stop the app: a machine
+# without it still runs Upscale and Sharpen, and the mode that needs it says so
+# itself. UPSCALER_COMFYUI=0 skips it entirely.
 up:
-	docker compose up --build -d
+	@if [ "$(UPSCALER_COMFYUI)" = "0" ]; then \
+		rm -f .upscaler/comfyui.env; \
+		echo "up: UPSCALER_COMFYUI=0, not starting ComfyUI"; \
+	elif ./scripts/comfyui-service.sh check >/dev/null 2>&1; then \
+		./scripts/comfyui-service.sh start; \
+	else \
+		rm -f .upscaler/comfyui.env; \
+		echo "up: starting without Illustration —"; \
+		./scripts/comfyui-service.sh check || true; \
+	fi
+	./scripts/compose.sh up --build -d
 
-CUDA_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.cuda.yml
-
-up-cuda:
-	$(CUDA_COMPOSE) up --build -d
-
-# Start the existing host ComfyUI and the containerised app as one local-only
-# deployment. Override COMFYUI or COMFYUI_PORT for another installation.
-COMFYUI ?= $(HOME)/comfy/ComfyUI
-COMFYUI_PORT ?= 8188
-COMFYUI_WORK ?= $(CURDIR)/.upscaler/comfyui-container-work
-COMFYUI_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.comfyui.yml
-
-up-comfyui:
-	./scripts/comfyui-service.sh start "$(COMFYUI)" "$(COMFYUI_PORT)"
-	install -d -m 0700 "$(COMFYUI_WORK)"
-	COMFYUI_ROOT="$(abspath $(COMFYUI))" COMFYUI_PORT="$(COMFYUI_PORT)" \
-		UPSCALER_COMFYUI_UID="$$(id -u)" UPSCALER_COMFYUI_GID="$$(id -g)" \
-		UPSCALER_COMFYUI_WORK_ROOT="$(abspath $(COMFYUI_WORK))" \
-		$(COMFYUI_COMPOSE) up --build -d
-
+# Stops everything this project started, in the order that keeps the app from
+# talking to a ComfyUI that is going away.
 down:
-	docker compose down
-
-down-comfyui:
-	COMFYUI_ROOT="$(abspath $(COMFYUI))" COMFYUI_PORT="$(COMFYUI_PORT)" $(COMFYUI_COMPOSE) down
-	./scripts/comfyui-service.sh stop "$(COMFYUI)" "$(COMFYUI_PORT)"
+	./scripts/compose.sh down
+	@if [ -f .upscaler/comfyui.conf ]; then ./scripts/comfyui-service.sh stop; fi
 
 logs:
-	docker compose logs -f
+	./scripts/compose.sh logs -f
 
 shell:
-	docker compose exec upscaler bash
+	./scripts/compose.sh exec upscaler bash
 
 dev-backend:
 	uv run uvicorn upscaler.app:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
@@ -92,13 +69,10 @@ build:
 package:
 	uv run python scripts/check-package.py
 
+# Both resolutions, because the host running this only has one of them.
 compose-config:
-	docker compose config --quiet
-	$(CUDA_COMPOSE) config --quiet
-	COMFYUI_ROOT="$(abspath $(COMFYUI))" COMFYUI_PORT="$(COMFYUI_PORT)" \
-		UPSCALER_COMFYUI_UID="$$(id -u)" UPSCALER_COMFYUI_GID="$$(id -g)" \
-		UPSCALER_COMFYUI_WORK_ROOT="$(abspath $(COMFYUI_WORK))" \
-		$(COMFYUI_COMPOSE) config --quiet
+	UPSCALER_GPU=0 ./scripts/compose.sh config --quiet
+	UPSCALER_GPU=1 ./scripts/compose.sh config --quiet
 
 test:
 	uv run pytest --cov=upscaler --cov-branch --cov-report=term-missing
@@ -128,21 +102,17 @@ GATES ?= all
 ci-local:
 	@./scripts/ci-local.sh $(GATES)
 
-run: build
-	uv run upscaler
-
 # Erases every picture this app has stored: job workspaces on the host and in the
 # Docker volume, and ComfyUI's input, output and temp directories, its run history
 # and its saved workflows. Model weights are kept. Prompts also live in the
 # browser's local storage, which no command here can reach.
 #
-# The ComfyUI half needs to know where ComfyUI is. A shell running make does not
-# normally carry the variables the app's launcher sets, so name it here:
-#   make clean-data COMFYUI=/path/to/ComfyUI
+# The ComfyUI half uses the installation recorded by `make setup-comfyui`.
+# COMFYUI=/path/to/ComfyUI overrides it for one that was never recorded.
 CLEAN_DATA_ARGS = $(if $(COMFYUI),--comfyui "$(COMFYUI)")
 
 clean-data:
-	UPSCALER_COMFYUI_WORK_ROOT="$(abspath $(COMFYUI_WORK))" uv run python scripts/clean-data.py $(CLEAN_DATA_ARGS)
+	uv run python scripts/clean-data.py $(CLEAN_DATA_ARGS)
 
 clean-data-force:
-	UPSCALER_COMFYUI_WORK_ROOT="$(abspath $(COMFYUI_WORK))" uv run python scripts/clean-data.py --yes $(CLEAN_DATA_ARGS)
+	uv run python scripts/clean-data.py --yes $(CLEAN_DATA_ARGS)

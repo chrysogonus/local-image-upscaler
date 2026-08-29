@@ -83,8 +83,9 @@ class RealEsrganNcnnAdapter:
         if self.binary:
             return "Real-ESRGAN was found, but its required model files are missing."
         return (
-            "Real-ESRGAN NCNN/Vulkan is not installed. Run the model setup script or set "
-            "UPSCALER_REALESRGAN_BIN."
+            "Real-ESRGAN NCNN/Vulkan is not installed. The released image does not "
+            "carry the Vulkan binary, so this engine needs one mounted into the "
+            "container and named by UPSCALER_REALESRGAN_BIN."
         )
 
     @property

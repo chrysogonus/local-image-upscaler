@@ -63,7 +63,12 @@ WORKFLOW_DIR = Path(__file__).resolve().parent.parent / "workflows"
 CATALOG_PATH = WORKFLOW_DIR / "catalog.json"
 
 URL_HINT = "http://127.0.0.1:8188"
-LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+# host.docker.internal is the container's name for the machine it is running on,
+# resolved through the host gateway declared in docker-compose.yml. The app ships
+# as a container and ComfyUI does not, so this is how the supported deployment
+# names its own host; treating it as remote would demand the off-device opt-in
+# for a connection that never leaves the machine.
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost", "host.docker.internal"})
 
 # How long a reachability answer is reused. /capabilities is polled by the
 # interface, and a request that waited on a network round trip every time would
@@ -87,7 +92,10 @@ BINARY_EVENT_PREVIEW_IMAGE = 1
 BINARY_IMAGE_FORMATS = {1: "JPEG", 2: "PNG"}
 BINARY_HEADER = struct.Struct(">II")
 
-WEBSOCKET_HINT = "The websockets package is required to talk to ComfyUI. Run `make setup-comfyui`."
+WEBSOCKET_HINT = (
+    "The websockets package is required to talk to ComfyUI. The released image "
+    "carries it; a host checkout needs `uv sync --extra comfyui`."
+)
 ILLUSTRATION_MODEL = "RealESRGAN_x4plus_anime_6B.pth"
 
 

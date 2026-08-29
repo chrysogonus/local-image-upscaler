@@ -2,18 +2,24 @@ services:
   upscaler:
     build:
       context: .
-      args:
-        # The default image contains no CUDA, torch, or neural weights. The
-        # digest-pinned NVIDIA base and neural extras live in the explicit CUDA
-        # overlay, docker-compose.cuda.yml.
-        UPSCALER_EXTRAS: ${UPSCALER_EXTRAS:-}
-    image: local-image-upscaler:cpu
+    image: local-image-upscaler
 
     # Published on the host's loopback only. Reach it from another machine with
     # an SSH tunnel, not by widening this binding — LocalOnlyMiddleware rejects
     # requests that arrive with a non-loopback Host header anyway.
     ports:
       - "127.0.0.1:8000:8000"
+
+    # The container's name for the machine it is running on, so a ComfyUI on
+    # this host is reachable without declaring it a remote one.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # The image runs unprivileged as 10001:10001. Override both only to match a
+    # host user that owns ComfyUI's input directory; the named volumes below are
+    # created for 10001 and need a one-time chown when you do. See
+    # docs/deployment.md.
+    user: ${UPSCALER_UID:-10001}:${UPSCALER_GID:-10001}
 
     environment:
       # Binds the container's own interface so the published port can reach it.
@@ -36,10 +42,17 @@ services:
       UPSCALER_VRAM_MIB: ${UPSCALER_VRAM_MIB:-}
       UPSCALER_GPU_NAME: ${UPSCALER_GPU_NAME:-}
       UPSCALER_MEMORY_KIND: ${UPSCALER_MEMORY_KIND:-}
-      # The CPU image deliberately downloads no model weights. CUDA and optional
-      # overlays opt into each group explicitly.
-      UPSCALER_FETCH_REALESRGAN: ${UPSCALER_FETCH_REALESRGAN:-0}
-      UPSCALER_FETCH_SWINIR: ${UPSCALER_FETCH_SWINIR:-0}
+      # Fetched into the weights volume on first start. Set either to 0 to skip
+      # a download you know this host cannot use.
+      UPSCALER_FETCH_REALESRGAN: ${UPSCALER_FETCH_REALESRGAN:-1}
+      UPSCALER_FETCH_SWINIR: ${UPSCALER_FETCH_SWINIR:-1}
+      # Illustration mode. Unset means the engine does not exist and the mode
+      # reports itself unavailable; that is the whole opt-in.
+      UPSCALER_COMFYUI_URL: ${UPSCALER_COMFYUI_URL:-}
+      # Names the mount below only when the host set a directory, so an unset
+      # variable leaves the uploaded source in place rather than pointing the
+      # adapter at the placeholder.
+      UPSCALER_COMFYUI_INPUT_DIR: ${UPSCALER_COMFYUI_INPUT_DIR:+/comfyui-input}
 
     volumes:
       # Model weights survive image rebuilds.
@@ -47,6 +60,10 @@ services:
       # Per-job scratch space. tmpfs would put full-resolution intermediates in
       # RAM, so this stays a normal volume.
       - work:/work
+      # ComfyUI has no API for deleting an input, so the adapter removes the
+      # source it uploaded. Without UPSCALER_COMFYUI_INPUT_DIR this is an empty
+      # placeholder the adapter never looks at.
+      - ${UPSCALER_COMFYUI_INPUT_DIR:-./.upscaler/comfyui-input}:/comfyui-input
 
     restart: unless-stopped
     stop_grace_period: 30s

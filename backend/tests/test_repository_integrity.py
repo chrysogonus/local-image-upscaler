@@ -38,8 +38,13 @@ def load_script(filename: str) -> ModuleType:
 
 def test_model_manifest_has_complete_immutable_download_metadata() -> None:
     manifest = load_json(MANIFEST)
-    assert manifest["schema_version"] == 3
-    entries = manifest["runtimes"] + manifest["weights"] + manifest["repositories"]
+    assert manifest["schema_version"] == 4
+    entries = (
+        manifest["runtimes"]
+        + manifest["weights"]
+        + manifest["repositories"]
+        + manifest["applications"]
+    )
     ids = [entry["id"] for entry in entries]
     assert len(ids) == len(set(ids)), "manifest ids must be unique"
 
@@ -62,6 +67,15 @@ def test_model_manifest_has_complete_immutable_download_metadata() -> None:
         assert entry["group"]
         if entry.get("noncommercial"):
             assert "commercial" in entry["license"].lower() or "s-lab" in entry["license"].lower()
+
+    # Applications are cloned, not downloaded, so a checksum cannot describe them
+    # and the commit is the only thing that makes an install reproducible. It
+    # governs a fresh clone; an adopted installation records what it actually has.
+    for entry in manifest["applications"]:
+        assert entry["repo_url"].startswith("https://")
+        assert COMMIT.fullmatch(entry["revision"]), f"{entry['id']} must be commit-pinned"
+        assert Path(entry["directory"]).name == entry["directory"]
+        assert entry["torch_index"].startswith("https://")
 
     for entry in manifest["repositories"]:
         assert entry["group"]
@@ -91,7 +105,12 @@ def test_notice_describes_the_licences_the_manifest_actually_installs() -> None:
     quotes it back.
     """
     manifest = load_json(MANIFEST)
-    weights = manifest["runtimes"] + manifest["weights"] + manifest["repositories"]
+    weights = (
+        manifest["runtimes"]
+        + manifest["weights"]
+        + manifest["repositories"]
+        + manifest["applications"]
+    )
     restricted = sorted(entry["id"] for entry in weights if entry.get("noncommercial"))
     notice = (REPOSITORY_ROOT / "NOTICE").read_text(encoding="utf-8")
 
@@ -126,8 +145,7 @@ def test_base_image_digests_are_pinned_only_in_the_dockerfile() -> None:
         path
         for path in (
             REPOSITORY_ROOT / "docker-compose.yml",
-            REPOSITORY_ROOT / "docker-compose.cuda.yml",
-            REPOSITORY_ROOT / "docker-compose.comfyui.yml",
+            REPOSITORY_ROOT / "docker-compose.gpu.yml",
             REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml",
             *sorted((REPOSITORY_ROOT / "docs").glob("*.md")),
         )

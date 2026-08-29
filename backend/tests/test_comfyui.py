@@ -212,6 +212,20 @@ def test_a_host_that_is_not_this_machine_is_refused(monkeypatch: pytest.MonkeyPa
     assert "not this machine" in (adapter.unavailable_reason or "")
 
 
+def test_the_containers_name_for_its_own_host_is_not_a_remote_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The app ships as a container and ComfyUI does not, so this is the normal case.
+
+    Requiring the off-device opt-in here would spend the one flag that means
+    "these images may leave this machine" on a connection that never does.
+    """
+    monkeypatch.setenv(comfyui.ENV_URL, "http://host.docker.internal:8188")
+    url, reason = comfyui.resolve_url()
+    assert url == "http://host.docker.internal:8188"
+    assert reason is None
+
+
 def test_a_remote_host_is_allowed_only_when_asked_for_in_as_many_words(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
