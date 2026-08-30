@@ -1,8 +1,19 @@
-.PHONY: setup setup-venv setup-frontend setup-browser setup-comfyui setup-model-comfyui-illustration up down logs shell dev-backend dev-frontend build package compose-config test test-frontend test-e2e lint check ci-local clean-data clean-data-force
+.PHONY: setup require-uv setup-venv setup-frontend setup-browser setup-comfyui setup-model-comfyui-illustration up down logs shell dev-backend dev-frontend build package compose-config test test-frontend test-e2e lint check ci-local clean-data clean-data-force
 
 setup: setup-venv setup-frontend
 
-setup-venv:
+# `make up` needs only Docker, but the targets below install onto the host and
+# run through uv. Say which tool is missing and how to get it, rather than
+# letting make report a bare `uv: No such file or directory` that names neither.
+require-uv:
+	@command -v uv >/dev/null 2>&1 || { \
+		echo "uv is not installed, and this command runs on the host, not in the container." >&2; \
+		echo "Install it with:  curl -LsSf https://astral.sh/uv/install.sh | sh" >&2; \
+		echo "See docs/deployment.md for which commands need it." >&2; \
+		exit 1; \
+	}
+
+setup-venv: require-uv
 	uv sync --extra dev
 
 setup-frontend:
@@ -16,12 +27,12 @@ setup-browser:
 # where it is so `make up`, `make down` and `make clean-data` need no arguments.
 # An installation already on the machine is adopted rather than replaced;
 # COMFYUI_DIR picks a different location for a fresh clone.
-setup-comfyui:
+setup-comfyui: require-uv
 	uv run python scripts/install-comfyui.py $(if $(COMFYUI_DIR),--dir "$(COMFYUI_DIR)")
 
 # Reinstalls just the illustration weight into the recorded ComfyUI. Normally
 # covered by setup-comfyui; kept for repairing that one file on its own.
-setup-model-comfyui-illustration:
+setup-model-comfyui-illustration: require-uv
 	uv run python scripts/install-weights.py --group comfyui-illustration \
 		--dir "$(or $(UPSCALER_COMFYUI_UPSCALE_MODELS_DIR),$(shell sed -n 's/^COMFYUI_ROOT=//p' .upscaler/comfyui.conf 2>/dev/null)/models/upscale_models)"
 
@@ -111,8 +122,8 @@ ci-local:
 # COMFYUI=/path/to/ComfyUI overrides it for one that was never recorded.
 CLEAN_DATA_ARGS = $(if $(COMFYUI),--comfyui "$(COMFYUI)")
 
-clean-data:
+clean-data: require-uv
 	uv run python scripts/clean-data.py $(CLEAN_DATA_ARGS)
 
-clean-data-force:
+clean-data-force: require-uv
 	uv run python scripts/clean-data.py --yes $(CLEAN_DATA_ARGS)

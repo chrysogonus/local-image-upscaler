@@ -47,7 +47,7 @@ Changelog = "https://github.com/chrysogonus/local-image-upscaler/releases"
 # Optional GPU engine. Kept out of the base install because torch is orders of
 # magnitude larger than the rest of the application and the classical and
 # NCNN engines do not need it. The wheel must match the local CUDA runtime;
-# see the CUDA section of docs/install.md for the correct index URL.
+# see docs/development.md for matching the wheel index to your driver.
 cuda = [
   "torch>=2.5",
 ]

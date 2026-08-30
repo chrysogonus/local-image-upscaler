@@ -232,7 +232,7 @@ def markdown_files() -> list[Path]:
     """
     return (
         sorted(REPOSITORY_ROOT.glob("*.md"))
-        + sorted((REPOSITORY_ROOT / "docs").glob("*.md"))
+        + sorted((REPOSITORY_ROOT / "docs").rglob("*.md"))
         + sorted((REPOSITORY_ROOT / ".github").rglob("*.md"))
     )
 

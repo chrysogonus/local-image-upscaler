@@ -16,6 +16,9 @@ pixels across. They are WebP-compressed for the web; the application's own compa
 is where sharpness is worth judging. The default **Upscale** mode targets photographs
 instead, and [Modes](#modes) sets out what each one claims.
 
+Both sources are the maintainer's own; [`docs/images/`](docs/images/README.md) records their
+provenance and what each panel is.
+
 ## Reconstruction only
 
 Every mode here **reconstructs**: it recovers detail the pixels still imply. No stage in
@@ -45,7 +48,7 @@ photographic. See [Modes](docs/reference.md#modes) for what each mode claims, an
 
 ## Quick start
 
-Docker is the only requirement, and there is one command:
+Running the app needs only Docker, and there is one command:
 
 ```bash
 make up
@@ -66,6 +69,11 @@ make setup-comfyui
 make up      # starts ComfyUI, then the app connected to it
 make down    # stops both
 ```
+
+`make setup-comfyui` installs onto the host rather than into the container, so it needs
+[uv](https://docs.astral.sh/uv/) alongside Docker; `make clean-data` below is the same. The
+one-line install is in [Deployment](docs/deployment.md#illustration-mode), and the commands
+say so themselves if it is missing.
 
 Reaching the app over SSH, what that setup command actually does, and sizing the app to
 your hardware are covered in [Deployment](docs/deployment.md).
