@@ -9,7 +9,6 @@ Thumbs.db
 # Environment and local configuration
 .env
 .env.*
-!.env.example
 *.local
 
 # Python

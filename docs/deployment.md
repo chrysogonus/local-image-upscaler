@@ -2,7 +2,7 @@
 
 ## Quick start
 
-Docker is the only requirement, and there is one command:
+Running the app needs only Docker, and there is one command:
 
 ```bash
 make up
@@ -101,6 +101,15 @@ This project does not contain one, so it installs one:
 
 ```bash
 make setup-comfyui
+```
+
+This one installs onto the host rather than into the container, so unlike `make up` it needs
+[uv](https://docs.astral.sh/uv/) as well as Docker. So does `make clean-data`. If it is
+missing, both commands say so and print this line rather than failing on a bare
+`uv: No such file or directory`:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 That command adopts a ComfyUI already on the machine — the one it has recorded, then

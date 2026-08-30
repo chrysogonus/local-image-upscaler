@@ -61,11 +61,13 @@ and validation of both Compose resolutions. It continues past failures and print
 one verdict, and it reports a gate whose toolchain is missing as BLOCKED rather
 than passing it. `GATES=backend` or `GATES=frontend` narrows it while you iterate.
 
-Pull-request CI additionally builds the release image — one image for every host, so it
-carries the CUDA base and the torch stack — and exercises an upload/job/download lifecycle
-as its configured non-root user on a runner with no GPU. Changes to the image or the
-Compose files should run that build locally when practical, and say explicitly when that
-was not possible.
+CI additionally builds the release image — one image for every host, so it carries the
+CUDA base and the torch stack — and exercises an upload/job/download lifecycle as its
+configured non-root user on a runner with no GPU. That build runs on `main` and on demand,
+and on a pull request only when it carries the `container` label, because a fork cannot
+write the layer cache and would otherwise pay the full uncached build. Label a pull request
+that touches the image or the Compose files, run that build locally when practical, and say
+explicitly when that was not possible.
 
 If a gate cannot run on your machine, say so in the pull request rather than
 describing it as passing.

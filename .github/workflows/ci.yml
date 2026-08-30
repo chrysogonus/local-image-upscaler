@@ -82,6 +82,15 @@ jobs:
     # The one image carries the CUDA base and the torch stack, so this is a
     # heavier build than the former CPU-only one. The layer cache below is what
     # keeps an ordinary pull request from paying the full cost.
+    #
+    # A fork cannot write that cache, so on a public repository every outside
+    # pull request would pay the full uncached CUDA build. Run it on main, on
+    # the weekly schedule, and on demand; a pull request opts in with the
+    # `container` label, which is what changes to the image or Compose files
+    # should carry.
+    if: >-
+      github.event_name != 'pull_request'
+      || contains(github.event.pull_request.labels.*.name, 'container')
     timeout-minutes: 90
 
     steps:
