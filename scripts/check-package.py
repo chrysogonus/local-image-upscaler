@@ -55,7 +55,7 @@ def main() -> int:
                     "from upscaler import __version__; "
                     "from upscaler.app import create_app; "
                     "from upscaler.benchmark.dataset import load_dataset; "
-                    "assert __version__ == '0.2.0'; "
+                    "assert __version__ == '0.3.0'; "
                     "assert create_app().title == 'Local Image Upscaler'; "
                     "assert len(load_dataset().cases) == 12"
                 ),

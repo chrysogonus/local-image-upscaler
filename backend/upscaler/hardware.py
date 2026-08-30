@@ -119,7 +119,7 @@ def hardware_from_comfy_stats(
     device: dict[str, Any] = devices[0] if devices and isinstance(devices[0], dict) else {}
 
     def mib(value: Any) -> int | None:
-        return int(value) // MIB if isinstance(value, (int, float)) and value >= 0 else None
+        return int(value) // MIB if isinstance(value, int | float) and value >= 0 else None
 
     ram_total = mib(system.get("ram_total"))
     ram_free = mib(system.get("ram_free"))

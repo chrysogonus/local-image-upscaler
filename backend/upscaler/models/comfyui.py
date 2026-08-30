@@ -290,12 +290,12 @@ def _free_memory_values(stats: Any) -> dict[str, int]:
     system = stats.get("system")
     if isinstance(system, dict):
         ram_free = system.get("ram_free")
-        if isinstance(ram_free, (int, float)) and ram_free >= 0:
+        if isinstance(ram_free, int | float) and ram_free >= 0:
             values["ram"] = int(ram_free)
     devices = stats.get("devices")
     if isinstance(devices, list) and devices and isinstance(devices[0], dict):
         vram_free = devices[0].get("vram_free")
-        if isinstance(vram_free, (int, float)) and vram_free >= 0:
+        if isinstance(vram_free, int | float) and vram_free >= 0:
             values["vram"] = int(vram_free)
     return values
 
@@ -448,7 +448,7 @@ def execute_graph(
             except Exception as exc:  # noqa: BLE001 - any socket failure ends the job
                 raise ModelExecutionError(f"Lost the connection to ComfyUI: {exc}") from exc
 
-            if isinstance(message, (bytes, bytearray)):
+            if isinstance(message, bytes | bytearray):
                 # Only the result node's images are ours; anything else on this
                 # socket is a sampler preview from some other node.
                 if current == result_node and len(message) >= BINARY_HEADER.size:
