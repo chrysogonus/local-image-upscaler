@@ -62,8 +62,9 @@ services:
       - work:/work
       # ComfyUI has no API for deleting an input, so the adapter removes the
       # source it uploaded. Without UPSCALER_COMFYUI_INPUT_DIR this is an empty
-      # placeholder the adapter never looks at.
-      - ${UPSCALER_COMFYUI_INPUT_DIR:-./.upscaler/comfyui-input}:/comfyui-input
+      # named volume the adapter never looks at; using a host path here would
+      # let the Docker daemon create a root-owned .upscaler directory.
+      - ${UPSCALER_COMFYUI_INPUT_DIR:-comfyui_input}:/comfyui-input
 
     restart: unless-stopped
     stop_grace_period: 30s
@@ -85,3 +86,4 @@ services:
 volumes:
   weights:
   work:
+  comfyui_input:
