@@ -179,3 +179,53 @@ test("selects, submits, reports progress, compares, downloads, and remains acces
   await expect.poll(() => deleteRequests).toBe(1);
   await expect(page.getByRole("button", { name: "Downloaded · job cleared" })).toBeVisible();
 });
+
+// 130 x 4 and 2 x 9: the two ways a source can fight a fixed stage. The wide one
+// is the shape that prompted the layout — it has to span the stage, not sit
+// shrunk inside it — and the tall one has to fit a stage that never scrolls.
+const sources = {
+  wide: Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAIIAAAAECAIAAADNiHBvAAAAIklEQVR4nGPUiFrAMAoGGjANtANGAQPDaDQMEjAaDYMCAAAH8QEq8VnEtQAAAABJRU5ErkJggg==",
+    "base64",
+  ),
+  tall: Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAAJCAIAAACXE2qwAAAAFUlEQVR4nGPUiFrAwMDAxMDAQA4FAEcYATQmrXubAAAAAElFTkSuQmCC",
+    "base64",
+  ),
+};
+
+for (const [shape, buffer] of Object.entries(sources)) {
+  test(`gives the stage the window and keeps the palette in view: ${shape} source`, async ({
+    page,
+  }) => {
+    // The short window that the bottom control bar used to squeeze the image out of.
+    await page.setViewportSize({ width: 1280, height: 620 });
+    await page.route("**/api/v1/capabilities", (route) => route.fulfill({ json: capabilities }));
+
+    await page.goto("/");
+    await page
+      .locator('input[type="file"]')
+      .first()
+      .setInputFiles({ name: `${shape}.png`, mimeType: "image/png", buffer });
+    await expect(page.getByAltText("Original source")).toBeVisible();
+
+    await expect(page.getByRole("button", { name: "Upscale image" })).toBeInViewport({ ratio: 1 });
+
+    const layout = await page.evaluate(() => {
+      const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      const stage = box(".stage-viewport");
+      const frame = box(".media-stack");
+      return {
+        pageOverflow: document.scrollingElement!.scrollHeight - window.innerHeight,
+        frameOverflowY: frame.height - stage.height,
+        frameOverflowX: frame.width - stage.width,
+        stageShare: box(".stage-area").width / box(".workspace").width,
+      };
+    });
+
+    expect(layout.pageOverflow).toBeLessThanOrEqual(0);
+    expect(layout.frameOverflowY).toBeLessThanOrEqual(0);
+    expect(layout.frameOverflowX).toBeLessThanOrEqual(0);
+    expect(layout.stageShare).toBeGreaterThan(0.8);
+  });
+}
