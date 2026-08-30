@@ -21,6 +21,16 @@ updates:
     groups:
       frontend-dependencies:
         patterns: ["*"]
+    # typescript-eslint refuses to load at all under TypeScript 7: it throws on
+    # import rather than degrading, so the lint gate dies while every other
+    # frontend gate still passes, which makes the cause easy to misread. Its
+    # peer range is >=4.8.4 <6.1.0, so 6.0.x is the ceiling. Without this the
+    # weekly group proposes TypeScript 7 again and the same red build returns.
+    # Drop it when TS 7 support lands; nothing else here holds TypeScript back.
+    # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=7"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
