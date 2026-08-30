@@ -55,10 +55,10 @@ function inspectImage(file: File, url: string): Promise<LocalImageInfo> {
 }
 
 /**
- * A disclosure that floats its panel over the stage instead of pushing the
- * layout: everything has to stay on one screen, and these two are the rarely
- * opened halves. Native details keeps the keyboard and semantics; the hook
- * adds the dismissal a floating panel needs.
+ * A disclosure that floats its panel over the workspace instead of pushing the
+ * layout, for the header readout that has no column of its own. Native details
+ * keeps the keyboard and semantics; the hook adds the dismissal a floating
+ * panel needs.
  */
 function useDismissable(open: boolean, close: () => void) {
   const ref = useRef<HTMLDetailsElement>(null);
@@ -157,13 +157,11 @@ export function App() {
   const [viewMode, setViewMode] = useState<"original" | "result" | "split">("original");
   const [split, setSplit] = useState(50);
   const [pixelView, setPixelView] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [hardwareOpen, setHardwareOpen] = useState(false);
   const stopObserving = useRef<(() => void) | null>(null);
   const loadedResultFor = useRef<string | null>(null);
   const fileUrl = useRef<string | null>(null);
   const resultObjectUrl = useRef<string | null>(null);
-  const advancedRef = useDismissable(advancedOpen, () => setAdvancedOpen(false));
   const hardwareRef = useDismissable(hardwareOpen, () => setHardwareOpen(false));
 
   const refreshCapabilities = useCallback(async () => {
@@ -476,7 +474,6 @@ export function App() {
           <span />
           127.0.0.1 only
         </span>
-        <span className="bar-note">Inferred detail, not evidence. Check at 1:1.</span>
         {capabilities ? (
           <details
             className="popover hardware-popover"
@@ -495,282 +492,314 @@ export function App() {
         </span>
       </header>
 
-      <div className="stage-area">
-        {!file || !localImage ? (
-          <label
-            className={`drop-zone ${dragging ? "dragging" : ""}`}
-            onDragEnter={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragOver={(event) => event.preventDefault()}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragging(false);
-              const dropped = event.dataTransfer.files[0];
-              if (dropped) void chooseFile(dropped);
-            }}
-          >
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const chosen = event.target.files?.[0];
-                if (chosen) void chooseFile(chosen);
+      <div className="workspace">
+        <div className="stage-area">
+          {!file || !localImage ? (
+            <label
+              className={`drop-zone ${dragging ? "dragging" : ""}`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDragging(true);
               }}
+              onDragOver={(event) => event.preventDefault()}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragging(false);
+                const dropped = event.dataTransfer.files[0];
+                if (dropped) void chooseFile(dropped);
+              }}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const chosen = event.target.files?.[0];
+                  if (chosen) void chooseFile(chosen);
+                }}
+              />
+              <strong>Choose an image</strong>
+              <span>Drop, paste, or browse · PNG · JPEG · WebP · GIF</span>
+              <span className="browse-button">Browse files</span>
+            </label>
+          ) : (
+            <CompareStage
+              originalUrl={localImage.url}
+              resultUrl={resultUrl}
+              width={resultDimensions?.width ?? localImage.width}
+              height={resultDimensions?.height ?? localImage.height}
+              mode={viewMode}
+              onModeChange={setViewMode}
+              split={split}
+              onSplitChange={setSplit}
+              pixelView={pixelView}
+              onPixelViewChange={setPixelView}
+              resultLabel={resultLabel}
+              filename={file.name}
+              onReplaceFile={(next) => void chooseFile(next)}
             />
-            <strong>Choose an image</strong>
-            <span>Drop, paste, or browse · PNG · JPEG · WebP · GIF</span>
-            <span className="browse-button">Browse files</span>
-          </label>
-        ) : (
-          <CompareStage
-            originalUrl={localImage.url}
-            resultUrl={resultUrl}
-            width={resultDimensions?.width ?? localImage.width}
-            height={resultDimensions?.height ?? localImage.height}
-            mode={viewMode}
-            onModeChange={setViewMode}
-            split={split}
-            onSplitChange={setSplit}
-            pixelView={pixelView}
-            onPixelViewChange={setPixelView}
-            resultLabel={resultLabel}
-            filename={file.name}
-            onReplaceFile={(next) => void chooseFile(next)}
-          />
-        )}
-      </div>
+          )}
+        </div>
 
-      <div className="run-bar">
-        {notices.length ? (
-          <div className="notices">
-            {notices.map((notice) => (
-              <p
-                key={notice.key}
-                className={notice.tone === "error" ? "inline-error" : "inline-warning"}
-              >
-                {notice.body}
-              </p>
-            ))}
-          </div>
-        ) : null}
+        <aside className="control-panel" aria-label="Job settings">
+          {notices.length ? (
+            <div className="notices">
+              {notices.map((notice) => (
+                <p
+                  key={notice.key}
+                  className={notice.tone === "error" ? "inline-error" : "inline-warning"}
+                >
+                  {notice.body}
+                </p>
+              ))}
+            </div>
+          ) : null}
 
-        <div className="info-strip">
-          <p className="mode-line" id="selected-mode-description">
-            <b>{selected?.name ?? "—"}</b>
-            {selected ? selected.description : "Detecting the local engine."}
-          </p>
-          <div className="run-facts">
+          <div className="info-strip">
+            <p className="mode-line" id="selected-mode-description">
+              <b>{selected?.name ?? "—"}</b>
+              <span className="mode-desc">
+                {selected ? selected.description : "Detecting the local engine."}
+              </span>
+            </p>
+            {/* The size change is the one fact worth reading first, so it leads
+                rather than sitting in the run of engine and device values. */}
             {localImage && resultDimensions ? (
-              <>
-                <span title="Source">
+              <p className="size-line">
+                <span>
                   {localImage.width.toLocaleString()} × {localImage.height.toLocaleString()}
                 </span>
                 <span className="arrow">→</span>
-                <strong title="Output">
+                <strong>
                   {resultDimensions.width.toLocaleString()} ×{" "}
                   {resultDimensions.height.toLocaleString()}
                 </strong>
-                <span title="Scale">{resultScale?.toFixed(2)}×</span>
-                <span title="Output format">PNG</span>
-              </>
+                <span className="scale">{resultScale?.toFixed(2)}×</span>
+              </p>
             ) : null}
-            <span title="Engine">{job?.result?.engine ?? selected?.engine ?? "Detecting"}</span>
-            <span title="Processor">{selected?.device ?? "Detecting"}</span>
-            {showPassPlan ? (
-              <span title="Neural passes">
-                {plannedPasses.map((scale) => `${scale}×`).join(" → ")}
-              </span>
-            ) : null}
-            {memoryEstimate ? (
-              <span title="Working-memory estimate">mem {formatBytes(memoryEstimate)}</span>
-            ) : null}
-            {job?.result?.resolved_tile_size ? (
-              <span title="Resolved tile size">tile {job.result.resolved_tile_size} px</span>
+            <dl className="run-facts">
+              <dt>Engine</dt>
+              <dd>{job?.result?.engine ?? selected?.engine ?? "Detecting"}</dd>
+              <dt>Device</dt>
+              <dd>{selected?.device ?? "Detecting"}</dd>
+              {showPassPlan ? (
+                <>
+                  <dt>Passes</dt>
+                  <dd>{plannedPasses.map((scale) => `${scale}×`).join(" → ")}</dd>
+                </>
+              ) : null}
+              {memoryEstimate ? (
+                <>
+                  <dt>Memory</dt>
+                  <dd>{formatBytes(memoryEstimate)}</dd>
+                </>
+              ) : null}
+              {job?.result?.resolved_tile_size ? (
+                <>
+                  <dt>Tile</dt>
+                  <dd>{job.result.resolved_tile_size} px</dd>
+                </>
+              ) : null}
+              {localImage && resultDimensions ? (
+                <>
+                  <dt>Format</dt>
+                  <dd>PNG</dd>
+                </>
+              ) : null}
+            </dl>
+            {/* Stated with the result it describes, not as permanent chrome. */}
+            {job?.result ? (
+              <p className="result-caveat">Inferred detail, not evidence. Check at 1:1.</p>
             ) : null}
           </div>
-        </div>
 
-        <ProgressStatus job={job} />
+          <ProgressStatus job={job} />
 
-        <div className="control-row">
-          <fieldset className="control-group">
-            <legend>Mode</legend>
-            <div className="segmented" role="group" aria-label="Processing mode">
-              {modes.map((entry) => (
-                <button
-                  key={entry.mode}
-                  aria-pressed={mode === entry.mode}
-                  aria-describedby={mode === entry.mode ? "selected-mode-description" : undefined}
-                  onClick={() => selectMode(entry.mode)}
-                  disabled={busy}
-                >
-                  {entry.name}
-                  {entry.generative ? <em>Generative</em> : null}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          {isUpscalingMode(mode) && safeTargets.length ? (
-            <fieldset className="control-group" disabled={busy}>
-              <legend>Target</legend>
-              <div className="segmented" role="group" aria-label="Target resolution">
-                {safeTargets.map((edge) => (
+          <div className="control-row">
+            <fieldset className="control-group">
+              <legend>Mode</legend>
+              <div className="segmented" role="group" aria-label="Processing mode">
+                {modes.map((entry) => (
                   <button
-                    key={edge}
-                    aria-pressed={targetEdge === edge}
-                    onClick={() => setTargetEdge(edge)}
+                    key={entry.mode}
+                    aria-pressed={mode === entry.mode}
+                    aria-describedby={mode === entry.mode ? "selected-mode-description" : undefined}
+                    onClick={() => selectMode(entry.mode)}
+                    disabled={busy}
                   >
-                    {edge === 3840 ? "4K" : edge === 7680 ? "8K" : `${edge} px`}
+                    {entry.name}
+                    {entry.generative ? <em>Generative</em> : null}
                   </button>
                 ))}
               </div>
             </fieldset>
-          ) : null}
 
-          <fieldset className="control-group" disabled={busy}>
-            <legend>Finishing</legend>
-            <div className="segmented" role="group" aria-label="Sharpening">
-              {sharpenPresets(mode).map((preset) => (
-                <button
-                  key={preset.label}
-                  aria-pressed={sharpen === preset.value}
-                  onClick={() => setSharpen(preset.value)}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <details
-            className="popover advanced"
-            ref={advancedRef}
-            open={advancedOpen}
-            onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
-          >
-            <summary>Advanced processing</summary>
-            <div className="popover-panel">
-              <label className="range-field">
-                <span>
-                  <b>Sharpening strength</b>
-                  <output>{sharpen}%</output>
-                </span>
-                <input
-                  type="range"
-                  min={mode === "sharpen_only" ? 1 : 0}
-                  max="100"
-                  value={sharpen}
-                  onChange={(event) => setSharpen(Number(event.target.value))}
-                  disabled={busy}
-                />
-              </label>
-              <p className="field-note">
-                Luminance only, halos clamped. Cannot add detail the pixels never implied.
-              </p>
-              {sharpen >= 60 ? (
-                <p className="inline-warning">High strength can create halos. Check at 1:1.</p>
-              ) : null}
-              {tileChoices.length ? (
-                <label className="select-field">
-                  <span>Tile size</span>
-                  <select
-                    value={tileSize}
-                    onChange={(event) => setTileSize(Number(event.target.value))}
-                    disabled={busy || !neural}
-                  >
-                    {tileChoices.map((size) => (
-                      <option key={size} value={size}>
-                        {size ? `${size} px` : "Automatic"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              {ttaChoice ? (
-                <label className="check-field">
-                  <input
-                    type="checkbox"
-                    checked={tta}
-                    onChange={(event) => setTta(event.target.checked)}
-                    disabled={busy}
-                  />
-                  <span>
-                    <b>Test-time augmentation</b>
-                    <small>Slightly better edges. Eight inferences per pass.</small>
-                  </span>
-                </label>
-              ) : null}
-              {restoreLargeChoice ? (
-                <label className="check-field">
-                  <input
-                    type="checkbox"
-                    checked={restoreLarge}
-                    onChange={(event) => setRestoreLarge(event.target.checked)}
-                    disabled={busy}
-                  />
-                  <span>
-                    <b>Restore before reducing</b>
-                    <small>Run the model even though the source already exceeds the target.</small>
-                  </span>
-                </label>
-              ) : null}
-              {passChoice ? (
-                <>
-                  <label className="select-field">
-                    <span>Maximum neural passes</span>
-                    <select
-                      value={maxNeuralPasses}
-                      onChange={(event) => setMaxNeuralPasses(Number(event.target.value))}
-                      disabled={busy}
+            {/* Always rendered, even by a mode that offers no choice: dropping
+                the group would move every control below it each time the mode
+                changed. The read-only value states what the mode does instead. */}
+            <fieldset className="control-group" disabled={busy}>
+              <legend>Target</legend>
+              {isUpscalingMode(mode) && safeTargets.length ? (
+                <div className="segmented" role="group" aria-label="Target resolution">
+                  {safeTargets.map((edge) => (
+                    <button
+                      key={edge}
+                      aria-pressed={targetEdge === edge}
+                      onClick={() => setTargetEdge(edge)}
                     >
-                      {[1, 2, 3, 4].map((count) => (
-                        <option key={count} value={count}>
-                          {count === 1 ? "1 (single pass)" : `${count} passes`}
+                      {edge === 3840 ? "4K" : edge === 7680 ? "8K" : `${edge} px`}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="static-value">
+                  {isUpscalingMode(mode)
+                    ? "None available"
+                    : localImage
+                      ? `Original size · ${localImage.width.toLocaleString()} × ${localImage.height.toLocaleString()}`
+                      : "Original size"}
+                </p>
+              )}
+            </fieldset>
+
+            <fieldset className="control-group" disabled={busy}>
+              <legend>Finishing</legend>
+              <div className="segmented" role="group" aria-label="Sharpening">
+                {sharpenPresets(mode).map((preset) => (
+                  <button
+                    key={preset.label}
+                    aria-pressed={sharpen === preset.value}
+                    onClick={() => setSharpen(preset.value)}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <details className="popover advanced">
+              <summary>Advanced processing</summary>
+              <div className="popover-panel">
+                <label className="range-field">
+                  <span>
+                    <b>Sharpening strength</b>
+                    <output>{sharpen}%</output>
+                  </span>
+                  <input
+                    type="range"
+                    min={mode === "sharpen_only" ? 1 : 0}
+                    max="100"
+                    value={sharpen}
+                    onChange={(event) => setSharpen(Number(event.target.value))}
+                    disabled={busy}
+                  />
+                </label>
+                <p className="field-note">
+                  Luminance only, halos clamped. Cannot add detail the pixels never implied.
+                </p>
+                {sharpen >= 60 ? (
+                  <p className="inline-warning">High strength can create halos. Check at 1:1.</p>
+                ) : null}
+                {tileChoices.length ? (
+                  <label className="select-field">
+                    <span>Tile size</span>
+                    <select
+                      value={tileSize}
+                      onChange={(event) => setTileSize(Number(event.target.value))}
+                      disabled={busy || !neural}
+                    >
+                      {tileChoices.map((size) => (
+                        <option key={size} value={size}>
+                          {size ? `${size} px` : "Automatic"}
                         </option>
                       ))}
                     </select>
                   </label>
-                  <p className="field-note">
-                    One pass enlarges up to 4×; the remainder is plain resampling.
-                  </p>
-                </>
-              ) : null}
-            </div>
-          </details>
+                ) : null}
+                {ttaChoice ? (
+                  <label className="check-field">
+                    <input
+                      type="checkbox"
+                      checked={tta}
+                      onChange={(event) => setTta(event.target.checked)}
+                      disabled={busy}
+                    />
+                    <span>
+                      <b>Test-time augmentation</b>
+                      <small>Slightly better edges. Eight inferences per pass.</small>
+                    </span>
+                  </label>
+                ) : null}
+                {restoreLargeChoice ? (
+                  <label className="check-field">
+                    <input
+                      type="checkbox"
+                      checked={restoreLarge}
+                      onChange={(event) => setRestoreLarge(event.target.checked)}
+                      disabled={busy}
+                    />
+                    <span>
+                      <b>Restore before reducing</b>
+                      <small>
+                        Run the model even though the source already exceeds the target.
+                      </small>
+                    </span>
+                  </label>
+                ) : null}
+                {passChoice ? (
+                  <>
+                    <label className="select-field">
+                      <span>Maximum neural passes</span>
+                      <select
+                        value={maxNeuralPasses}
+                        onChange={(event) => setMaxNeuralPasses(Number(event.target.value))}
+                        disabled={busy}
+                      >
+                        {[1, 2, 3, 4].map((count) => (
+                          <option key={count} value={count}>
+                            {count === 1 ? "1 (single pass)" : `${count} passes`}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <p className="field-note">
+                      One pass enlarges up to 4×; the remainder is plain resampling.
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            </details>
 
-          <div className="actions">
-            {busy ? (
-              <button className="primary-button cancel" onClick={() => void cancel()}>
-                Cancel
-              </button>
-            ) : (
+            <div className="actions">
+              {busy ? (
+                <button className="primary-button cancel" onClick={() => void cancel()}>
+                  Cancel
+                </button>
+              ) : (
+                <button
+                  className="primary-button"
+                  disabled={
+                    !file || !selected?.available || (isUpscalingMode(mode) && !safeTargets.length)
+                  }
+                  onClick={() => void run()}
+                >
+                  {processingAction(mode)}
+                </button>
+              )}
               <button
-                className="primary-button"
-                disabled={
-                  !file || !selected?.available || (isUpscalingMode(mode) && !safeTargets.length)
-                }
-                onClick={() => void run()}
+                className="secondary-button"
+                disabled={!job?.result || !resultUrl || downloaded}
+                onClick={() => void download()}
               >
-                {processingAction(mode)}
+                {downloaded
+                  ? "Downloaded · job cleared"
+                  : job?.result
+                    ? `Download PNG · ${formatBytes(job.result.bytes)}`
+                    : "Download result"}
               </button>
-            )}
-            <button
-              className="secondary-button"
-              disabled={!job?.result || !resultUrl || downloaded}
-              onClick={() => void download()}
-            >
-              {downloaded
-                ? "Downloaded · job cleared"
-                : job?.result
-                  ? `Download PNG · ${formatBytes(job.result.bytes)}`
-                  : "Download result"}
-            </button>
+            </div>
           </div>
-        </div>
+        </aside>
       </div>
     </main>
   );

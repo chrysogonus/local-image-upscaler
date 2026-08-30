@@ -118,7 +118,18 @@ async def test_upscale_job_lifecycle(tmp_path: Path):
         assert snapshot["result"]["width"] == 256
         assert snapshot["result"]["height"] == 128
         assert snapshot["result"]["filename"].endswith(".png")
-        assert snapshot["result"]["resolved_tile_size"] == 0
+
+        # The upload asked for automatic tiling, so the size the run resolved to
+        # depends on the engine actually installed: zero where the engine tiles
+        # internally, otherwise one of the sizes this machine advertises as safe.
+        # resolve_tile itself is pinned against fixed hardware in
+        # test_resource_policy; what matters here is that the completed result
+        # reports the tile the job really used rather than the one it requested.
+        modes = (await client.get("/api/v1/capabilities")).json()["modes"]
+        upscale = next(mode for mode in modes if mode["mode"] == "upscale")
+        resolved_tile = snapshot["result"]["resolved_tile_size"]
+        assert snapshot["settings"]["tile_size"] == 0
+        assert resolved_tile == 0 or resolved_tile in upscale["safe_tile_sizes"]
 
         result = await client.get(f"/api/v1/jobs/{job_id}/result")
         assert result.status_code == 200

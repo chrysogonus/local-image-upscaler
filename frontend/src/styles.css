@@ -55,18 +55,26 @@ button:disabled {
   opacity: 0.42;
 }
 
-/* One screen: a fixed header, a stage that takes whatever is left, and a
-   control bar that never leaves the fold. Small viewports opt back out
-   below, where clipping the controls would be worse than scrolling. */
+/* One screen: a fixed header over a workspace that fills the rest. The
+   controls stand in a column beside the stage rather than a bar beneath it,
+   so the picture gets the whole window height and nothing can push the
+   settings past the fold. Narrow viewports opt back out below, where a
+   260px column beside an image stops being possible. */
 .app-shell {
   width: min(1600px, 100%);
   height: 100dvh;
   margin: 0 auto;
   padding: 10px clamp(12px, 2.2vw, 28px) 12px;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   overflow: hidden;
+}
+.workspace {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(232px, 17vw, 260px);
+  gap: 10px;
 }
 
 .app-bar {
@@ -87,6 +95,7 @@ button:disabled {
   letter-spacing: -0.03em;
 }
 .local-badge {
+  margin-right: auto;
   white-space: nowrap;
   border: 1px solid var(--rule);
   background: rgba(255, 255, 255, 0.48);
@@ -103,13 +112,6 @@ button:disabled {
   background: var(--teal);
   border-radius: 50%;
   margin-right: 7px;
-}
-.bar-note {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .bar-version {
   text-transform: uppercase;
@@ -236,6 +238,9 @@ button:disabled {
 }
 .stage-viewport {
   min-height: 0;
+  /* A size container, so the frame below can be measured against the space the
+     layout actually left for it. */
+  container-type: size;
   background-color: var(--paper-deep);
   background-image: conic-gradient(
     from 90deg at 50% 50%,
@@ -262,8 +267,11 @@ button:disabled {
   overflow: hidden;
   background: #dce2e8;
 }
+/* Fit both axes: the frame is the narrower of the full width and the width the
+   available height allows at this image's ratio. The stage is a fixed box that
+   never scrolls, so a frame sized on width alone would crop a tall source. */
 .fit-view .media-stack {
-  width: 100%;
+  width: min(100cqw, 100cqh * (var(--media-ratio)));
   max-height: 100%;
 }
 .media-stack.draggable-split {
@@ -321,59 +329,99 @@ button:disabled {
   accent-color: var(--blue);
 }
 
-.run-bar {
+/* The settings column. Its own overflow is the release valve for a very short
+   window: the palette scrolls in place, the page never does. */
+.control-panel {
+  min-height: 0;
+  overflow-y: auto;
   border: 1px solid var(--rule);
   background: var(--white);
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 11px 11px 0;
 }
-/* Bounded, so a burst of warnings can never push the controls off screen. */
+/* Bounded, so a burst of warnings can never crowd out the controls. */
 .notices {
   max-height: 92px;
   overflow-y: auto;
-  padding: 8px 12px 0;
 }
 .info-strip {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 6px 20px;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--rule);
-  background: #f5f7f9;
+  flex-direction: column;
+  gap: 8px;
 }
 .mode-line {
   margin: 0;
   min-width: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 .mode-line b {
   color: var(--ink);
-  margin-right: 8px;
+  font-size: 13px;
 }
-.run-facts {
+.mode-desc {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.size-line {
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
   align-items: baseline;
+  gap: 3px 7px;
   color: var(--muted);
-  font: 11px/1.3 var(--mono);
+  font: 12px/1.3 var(--mono);
 }
-.run-facts strong {
+.size-line strong {
   color: var(--ink);
   font-weight: 600;
 }
-.run-facts .arrow {
+.size-line .arrow {
   color: var(--blue);
+}
+/* Pushed to the end of the line so the two dimensions stay adjacent when the
+   column is too narrow to hold all three on one row. */
+.size-line .scale {
+  margin-left: auto;
+}
+/* Labelled, because the values are unreadable without saying what they are and
+   a title attribute says it to nobody using the keyboard or a screen reader. */
+.run-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 3px 10px;
+  margin: 0;
+  align-items: baseline;
+}
+.run-facts dt {
+  color: var(--muted);
+  font: 10px/1.3 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+}
+.run-facts dd {
+  margin: 0;
+  color: var(--ink);
+  font: 11px/1.3 var(--mono);
+  overflow-wrap: anywhere;
+}
+.result-caveat {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .control-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 10px 18px;
-  padding: 10px 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 13px;
+  flex: 1;
 }
 .control-group {
   border: 0;
@@ -389,6 +437,28 @@ legend {
   text-transform: uppercase;
   letter-spacing: 0.13em;
 }
+.control-panel .segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background: var(--rule);
+}
+.control-panel .segmented button {
+  flex: 1 0 auto;
+  border-right: 0;
+  padding: 7px 9px;
+}
+/* Matches a segmented row's box exactly, so a mode with nothing to choose
+   costs the same height as one that does. Filled, not white, and with no
+   pressed state: a value to read, not a control to press. */
+.static-value {
+  margin: 0;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 7px 9px;
+  color: var(--muted);
+  font: 11px/1 var(--mono);
+}
 .control-row .segmented button em {
   display: block;
   color: var(--orange);
@@ -400,10 +470,19 @@ legend {
 .control-row .segmented button[aria-pressed="true"] em {
   color: white;
 }
+/* A footer, not another group: the button you press last keeps the same place
+   however many groups the mode shows, and stays put when opening Advanced
+   processing scrolls the palette. */
 .actions {
+  position: sticky;
+  bottom: 0;
   display: flex;
+  flex-direction: column;
   gap: 7px;
-  margin-left: auto;
+  margin: auto -11px 0;
+  padding: 10px 11px 11px;
+  border-top: 1px solid var(--rule);
+  background: var(--white);
 }
 .primary-button,
 .secondary-button {
@@ -464,8 +543,11 @@ legend {
   box-shadow: 0 10px 30px rgba(17, 22, 29, 0.16);
 }
 .advanced .popover-panel {
-  bottom: calc(100% + 7px);
-  left: 0;
+  position: static;
+  width: auto;
+  max-height: none;
+  margin-top: 7px;
+  box-shadow: none;
 }
 .hardware-popover > summary {
   background: transparent;
@@ -615,7 +697,6 @@ select {
   color: #861c1c;
 }
 .status {
-  padding: 0 12px;
   color: var(--muted);
   font: 11px/1.45 var(--mono);
 }
@@ -659,19 +740,30 @@ select {
   }
 }
 
-/* Where one screen stops being possible, scrolling beats clipping. */
-@media (max-width: 900px), (max-height: 660px) {
+/* Too narrow for a column beside the image: the palette drops underneath and
+   the page scrolls. Short windows are no longer a reason to opt out -- with the
+   controls in a column there is no bar left to push off the bottom. */
+@media (max-width: 900px) {
   .app-shell {
     height: auto;
     min-height: 100dvh;
     overflow: visible;
   }
-  .stage-area {
-    min-height: 62vh;
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .advanced .popover-panel {
-    bottom: auto;
-    top: calc(100% + 7px);
+  /* Fixed, not a floor: the image can never claim more than its share. */
+  .stage-area {
+    height: 62vh;
+  }
+  .control-panel {
+    overflow: visible;
+  }
+  /* Nothing to stick to once the palette stops scrolling: left sticky it would
+     pin to the window and paint over the groups above it. */
+  .actions {
+    position: static;
+    margin-top: 0;
   }
 }
 @media (max-width: 600px) {
@@ -681,17 +773,6 @@ select {
   .app-bar {
     flex-wrap: wrap;
     gap: 8px 12px;
-  }
-  .bar-note {
-    order: 4;
-    flex-basis: 100%;
-  }
-  .actions {
-    margin-left: 0;
-    width: 100%;
-  }
-  .actions button {
-    flex: 1;
   }
   .segmented button {
     padding: 7px 9px;

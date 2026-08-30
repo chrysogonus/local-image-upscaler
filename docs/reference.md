@@ -28,7 +28,7 @@ because every one of those was a way to make the result worse rather than better
 
 ### Finishing
 
-Sharpening is chosen in the control bar as **Off**, **Natural**, **Crisp**, or **Strong**,
+Sharpening is chosen in the settings palette as **Off**, **Natural**, **Crisp**, or **Strong**,
 and every mode opens on Natural. The exact percentage behind those anchors stays on a
 slider under *Advanced processing*.
 
