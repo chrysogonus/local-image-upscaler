@@ -13,7 +13,7 @@ FROM ${CERTIFICATES_IMAGE} AS certificates
 # and in CI. Dependabot's Docker updater maintains digests it finds on a FROM
 # line, so this is the only place the CUDA pin can live and still be kept
 # current.
-FROM nvidia/cuda:13.0.1-runtime-ubuntu24.04@sha256:c3fde347d52d578c84fd644bc177bc7ec333feaf11550d990da4084d7612e4c7 AS cuda-runtime
+FROM nvidia/cuda:13.3.1-runtime-ubuntu24.04@sha256:63da350831208559df18c7b8f3e0d5d1c984eaa815cdde690aacd6606cd0cb11 AS cuda-runtime
 
 # ---------------------------------------------------------------- frontend --
 FROM ${NODE_IMAGE} AS frontend
