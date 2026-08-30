@@ -99,6 +99,33 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Reclaim runner disk space
+        # The one image carries the CUDA base and the whole torch CUDA stack,
+        # and `uv sync` needs that stack on disk twice at once: unpacked in the
+        # cache mount, then copied into /opt/venv, because UV_LINK_MODE is copy
+        # and a hard link cannot cross a cache mount. The layer snapshot, the
+        # mode=max cache export and the `load: true` below each want their own
+        # copy on top of that. A stock runner does not have the room, and the
+        # sync dies partway through installing nccl with "No space left on
+        # device (os error 28)".
+        #
+        # Nothing removed here takes part in this build: it is the preinstalled
+        # Android, Haskell, .NET and PowerShell toolchains, the CodeQL bundles,
+        # and the images that ship in the daemon. The rest of
+        # /opt/hostedtoolcache is deliberately left in place — container-smoke.sh
+        # runs the runner's own python3 to read the job JSON.
+        run: |
+          df -h / | tail -1
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /usr/local/share/powershell \
+            /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force
+          df -h / | tail -1
+
       - name: Validate both Compose resolutions
         run: make compose-config
 
