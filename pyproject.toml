@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "local-image-upscaler"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local-first 4K and 8K image restoration web application"
 readme = "README.md"
 requires-python = ">=3.10"
